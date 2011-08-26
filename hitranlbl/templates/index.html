@@ -1,0 +1,180 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-srict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+<meta name="author" content="Christian Hill"/>
+<meta name="keywords" content="HITRAN, line-by-line, transitions, database, search"/>
+<meta name="description" content="HITRAN line-by-line search"/>
+<meta name="robots" content="all"/>
+
+<title>HITRAN line-by-line search</title>
+<link rel="stylesheet" href="/static/css/layout.css" type="text/css" media="screen"/>
+
+<script type="text/javascript">
+
+function select_all_molecules()
+{
+	oSelectButton = document.SearchForm.select_all;
+    oElements = document.SearchForm.elements["molecule"];
+	if (oSelectButton.value == "Select All") {
+		for (var i in oElements) {
+            if (oElements[i].name == 'molecule') {
+                oCheckBox = oElements[i];
+                if (oCheckBox) {
+                    oCheckBox.checked = true;
+                }
+            }
+		}
+		oSelectButton.value = "Select None";
+	} else {
+		for (var i in oElements) {
+			if (oElements[i].name == 'molecule') {
+                oCheckBox = oElements[i];
+                if (oCheckBox) {
+                    oCheckBox.checked = false;
+                }
+            }
+		}
+		oSelectButton.value = "Select All";
+	}
+}
+
+function select_first_seven()
+{
+	oSelectButton = document.SearchForm.select_seven;
+    oElements = document.SearchForm.elements["molecule"];
+    var iMolec = 0;
+    for (var i in oElements) {
+        if (oElements[i].name == 'molecule') {
+            oCheckBox = oElements[i];
+            if (oCheckBox) {
+                oCheckBox.checked = true;
+            }
+            iMolec += 1;
+        }
+        if (iMolec == 7) {
+            break;
+        }
+    }
+}
+
+function change_units()
+{
+    
+    oNuMinUnits = document.SearchForm.elements["numin_units"];
+    oNuMaxUnits = document.getElementById("numax_units");
+    oNuMinLabel = document.getElementById("numin_label");
+    oNuMaxLabel = document.getElementById("numax_label");
+    units = oNuMinUnits.value;
+
+    freq = false;
+    freq_units_array = ['cm-1', 'MHz', 'GHz'];
+    for (var i=0; i<freq_units_array.length; i++) {
+        freq_units = freq_units_array[i];
+        if (units == freq_units) {
+            freq = true;
+            break;
+        }
+    }
+    if (freq) {
+        oNuMinLabel.innerHTML = '<em>&nu;</em><sub>min</sub>';
+        oNuMaxLabel.innerHTML = '<em>&nu;</em><sub>max</sub>';
+    } else {
+        oNuMinLabel.innerHTML = '<em>&lambda;</em><sub>min</sub>';
+        oNuMaxLabel.innerHTML = '<em>&lambda;</em><sub>max</sub>';
+    }
+
+    if (units == 'cm-1') {
+        units = 'cm<sup>-1</sup>';
+    } else if (units == 'A') {
+        units = '&Aring;';
+    } else if (units == 'um') {
+        units = '&mu;m';
+    }
+    oNuMaxUnits.innerHTML = units;
+}
+
+function change_output_text_formats()
+{
+    fmt_name = document.SearchForm.elements["output_formats"];
+    fmt_name = fmt_name.value;
+    update_output_text_formats(fmt_name);
+}
+
+function update_output_text_formats(fmt_name) {
+    // XXX this function doesn't do anything yet
+}
+
+function fill_current_date()
+{
+    date_box = document.getElementById("date");
+    var today = new Date();
+    // God, JavaScript is awful:
+    date_box.value = today.getFullYear() + '-' + (today.getMonth()+1)
+            + '-' + today.getDate();
+}
+
+</script>
+
+
+</head>
+<body>
+<div id="content">
+
+<div id="lblsearch_left_panel">
+
+<table><tr><td><input value="Select All" type="button" name="select_all" onclick='JavaScript:select_all_molecules()'/></td><td><input value="Select First 7" type="button" name="select_seven" onclick='JavaScript:select_first_seven()'/></td></tr></table>
+
+<table>
+<tr>
+{% for molecule in present_molecules %}
+<td><input type="checkbox" name="molecule" value="{{ molecule.molecID }}"/>
+&nbsp;{{ molecule.ordinary_formula_html|safe }}</td>
+{% endfor %}
+</tr>
+</table>
+
+<table>
+<tr>
+<td id="numin_label"><em>&nu;</em><sub>min</sub></td>
+<td><input type="text" name="numin"></td>
+<td><select onchange="JavaScript:change_units()" name="numin_units"><option value="cm-1" selected>cm-1</option><option value="nm">nm</option><option value="A">&Aring;</option><option value="um">&mu;m</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></td>
+</tr>
+<tr>
+<td id="numax_label"><em>&nu;</em><sub>max</sub></td>
+<td><input type="text" name="numax"></td>
+<td id="numax_units">cm<sup>-1</sup></td>
+</tr>
+<tr>
+<td><em>S</em><sub>min</sub></td>
+<td><input type="text" name="Smin"></td>
+<td>cm<sup>-1</sup>/molec.cm<sup>-2</sup></td>
+</tr>
+<tr>
+<td>Valid on</td>
+<td><input type="text" name="date" id="date"/></td>
+</tr>
+</table>
+</div> <!-- lblsearch_left_panel -->
+
+<div id="lblsearch_right_panel">
+<h2>Output Format</h2>
+<p>
+<select onchange="JavaScript:change_output_text_formats()" name="output_formats">
+{% for output_format in output_formats %}
+<option value="{{ output_format.name }}">{{ output_format.title }}</option>
+{% endfor %}
+</select>
+</p>
+</div> <!-- lblsearch_right_panel -->
+
+</div> <!-- content -->
+
+<div style="clear: both; width: 200px; margin: auto;">
+<br/><br/>
+<input type="submit" value="Submit Query"/>
+</div>
+
+</body>
+</html>
