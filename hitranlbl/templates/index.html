@@ -13,6 +13,8 @@
 
 <script type="text/javascript">
 
+/* tick or untick all molecules' checkboxes and toggle the button label
+   accordingly */
 function select_all_molecules()
 {
 	oSelectButton = document.SearchForm.select_all;
@@ -40,6 +42,7 @@ function select_all_molecules()
 	}
 }
 
+/* tick all of the first seven molecules' checkboxes */
 function select_first_seven()
 {
 	oSelectButton = document.SearchForm.select_seven;
@@ -59,6 +62,9 @@ function select_first_seven()
     }
 }
 
+/* when the requested wavenumber/wavelength search units are changed,
+   this function gets called to change the HTML to reflect the new maximum
+   and minimum wavelength/wavenumber labels and units */
 function change_units()
 {
     
@@ -95,17 +101,24 @@ function change_units()
     oNuMaxUnits.innerHTML = units;
 }
 
-function change_output_text_formats()
+/* this function is called when a new output collection is selected from
+   the drop-down box output_collection */
+function change_output_collection()
 {
-    fmt_name = document.SearchForm.elements["output_formats"];
-    fmt_name = fmt_name.value;
-    update_output_text_formats(fmt_name);
+    collectionID = document.SearchForm.elements["output_collection"].value;
+    update_output_formats(collectionID);
 }
 
-function update_output_text_formats(fmt_name) {
-    // XXX this function doesn't do anything yet
+/* update the div containing a list of the output fields for the selected
+   output collection; this function is also called on page load */
+function update_output_formats(collectionID) {
+    output_fields = document.getElementById("output_fields");
+    field_list_html = output_fields_html[collectionID];
+    output_fields.innerHTML = field_list_html;
 }
 
+/* fill the 'Valid on' date box with today's date. This function is called
+   on page load */
 function fill_current_date()
 {
     date_box = document.getElementById("date");
@@ -115,17 +128,47 @@ function fill_current_date()
             + '-' + today.getDate();
 }
 
+/* pre-load the field list HTML because we can't access it dynamically
+   once the page is loaded */
+var output_fields_html = new Array();
+function load_output_fields_html()
+{
+    {% for output_collection in output_collections %}
+        field_html = '<table>'
+        {% for output_field in output_collection.output_field.all %}
+            field_html += '<tr class="{% cycle 're' 'ro' %}"><td>{{ output_field.name_html|safe }}</td><td class="desc"> {{ output_field.desc_html|safe }}</td></tr>'
+        {% endfor %}
+        field_html += '</table>'
+        output_fields_html.push(field_html)
+    {% endfor %}
+}
+
 </script>
 
-
 </head>
-<body>
+<body onload="load_output_fields_html();
+              fill_current_date();
+              change_output_collection();">
+
+<h1>HITRAN line-by-line search</h1>
+
+<form name="SearchForm" method="POST">
+
 <div id="content">
 
 <div id="lblsearch_left_panel">
 
-<table><tr><td><input value="Select All" type="button" name="select_all" onclick='JavaScript:select_all_molecules()'/></td><td><input value="Select First 7" type="button" name="select_seven" onclick='JavaScript:select_first_seven()'/></td></tr></table>
+<!-- controls above the molecule checkboxes -->
+<table>
+<tr>
+<td><input value="Select All" type="button" name="select_all"
+           onclick='JavaScript:select_all_molecules()'/></td>
+<td><input value="Select First 7" type="button" name="select_seven"
+           onclick='JavaScript:select_first_seven()'/></td>
+</tr>
+</table>
 
+<!-- the molecule checkboxes -->
 <table>
 <tr>
 {% for molecule in present_molecules %}
@@ -135,46 +178,70 @@ function fill_current_date()
 </tr>
 </table>
 
+<!-- search parameters such as wavelength/wavenumber interval -->
 <table>
+<!-- wavelength/wavenumber minimum, with units selection -->
 <tr>
 <td id="numin_label"><em>&nu;</em><sub>min</sub></td>
 <td><input type="text" name="numin"></td>
-<td><select onchange="JavaScript:change_units()" name="numin_units"><option value="cm-1" selected>cm-1</option><option value="nm">nm</option><option value="A">&Aring;</option><option value="um">&mu;m</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></td>
+<td><select onchange="JavaScript:change_units()" name="numin_units">
+    <option value="cm-1" selected>cm-1</option>
+    <option value="nm">nm</option>
+    <option value="A">&Aring;</option>
+    <option value="um">&mu;m</option>
+    <option value="MHz">MHz</option>
+    <option value="GHz">GHz</option>
+</select></td>
 </tr>
+<!-- wavelength/wavenumber maximum -->
 <tr>
 <td id="numax_label"><em>&nu;</em><sub>max</sub></td>
 <td><input type="text" name="numax"></td>
 <td id="numax_units">cm<sup>-1</sup></td>
 </tr>
+<!-- line intensity -->
 <tr>
 <td><em>S</em><sub>min</sub></td>
 <td><input type="text" name="Smin"></td>
 <td>cm<sup>-1</sup>/molec.cm<sup>-2</sup></td>
 </tr>
+<!-- valid-on date -->
 <tr>
 <td>Valid on</td>
 <td><input type="text" name="date" id="date"/></td>
 </tr>
 </table>
+
 </div> <!-- lblsearch_left_panel -->
 
 <div id="lblsearch_right_panel">
 <h2>Output Format</h2>
+<!-- output collections drop-down box -->
 <p>
-<select onchange="JavaScript:change_output_text_formats()" name="output_formats">
-{% for output_format in output_formats %}
-<option value="{{ output_format.name }}">{{ output_format.title }}</option>
+<select onchange="JavaScript:change_output_collection()"
+        name="output_collection">
+{% for output_collection in output_collections %}
+<option value="{{ forloop.counter0 }}">{{ output_collection.name }}</option>
 {% endfor %}
 </select>
 </p>
+
+<!-- output fields for the selected collection -->
+<div id="output_fields">
+<p>Something went wrong - there should be a list of output fields here</p>
+</div>
+
+
 </div> <!-- lblsearch_right_panel -->
 
-</div> <!-- content -->
-
+<!-- the 'Submit Query' button -->
 <div style="clear: both; width: 200px; margin: auto;">
 <br/><br/>
 <input type="submit" value="Submit Query"/>
 </div>
 
+</div> <!-- content -->
+
+</form>
 </body>
 </html>

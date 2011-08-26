@@ -126,6 +126,9 @@ class OutputCollection(models.Model):
     name = models.CharField(max_length=50)
     output_field = models.ManyToManyField(OutputField)
 
+    def __unicode__(self):
+        return self.name
+
     class Meta:
         app_label='hitranmeta'
     
