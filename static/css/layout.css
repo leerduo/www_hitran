@@ -61,3 +61,7 @@ h1 {
 #output_fields td.desc {
     font-family: serif;
 }
+
+.error_msg {
+    color: #f00;
+}
