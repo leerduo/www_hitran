@@ -17,7 +17,7 @@ present_molecules = Molecule.objects.filter(molecID__in=p_ids)
 output_collections = OutputCollection.objects.all()
 
 # Limit the number of returned transitions to TRANSLIM, if not None:
-TRANSLIM = 100
+TRANSLIM = 10
 
 def index(request):
     if request.POST:
@@ -96,6 +96,7 @@ def make_html_files(form, filestem, transitions):
     print >>fo, '<tr>'
     for output_field in output_fields:
         print >>fo, '<th>%s</th>' % output_field.name_html
+    print >>fo, '<th>v&rsquo;</th><th>v&rdquo;</th>'#
     print >>fo, '</tr>'
     r_on, r_off = 're', 'ro'
 
@@ -107,6 +108,14 @@ def make_html_files(form, filestem, transitions):
                 % output_field.cfmt)
         elif output_field.name == 'iso_id':
             field_eval.append('"%s" %% trans.iso.isoID' % output_field.cfmt)
+        elif output_field.name in ('Elower', 'gp', 'gpp', 'par_line',
+                                   'multipole'):
+            field_eval.append('"%s" %% trans.%s'
+                % (output_field.cfmt, output_field.name))
+        elif output_field.name == 'stateIDp':
+            field_eval.append('"%s" %% trans.statep.id' % output_field.cfmt)
+        elif output_field.name == 'stateIDpp':
+            field_eval.append('"%s" %% trans.statepp.id' % output_field.cfmt)
         elif len(output_field.name) > 4 and output_field.name[-4:] in (
                     '.val', '.err', '.ref'):
             prm_names.add(output_field.name[:-4])
@@ -122,9 +131,14 @@ def make_html_files(form, filestem, transitions):
             field_eval.append('***')
 
     for trans in transitions:
+        # get all the parameters, and attach the ones we're going to output
+        # to the Trans instance
         prms = trans.prm_set.all()
         for prm_name in prm_names:
             exec('trans.%s = prms.get(name="%s")' % (prm_name, prm_name))
+
+        qnsp = trans.statep.qns_set #
+        qnspp = trans.statepp.qns_set #
             
         print >>fo, '<tr class="%s">' % r_on
         for i, output_field in enumerate(output_fields):
@@ -134,6 +148,18 @@ def make_html_files(form, filestem, transitions):
                 #print field_eval[i]
                 s_val = '###'
             print >>fo, '<td>%s</td>' % s_val
+
+        try:#
+            s_val = qnsp.get(qn_name='v').qn_val#
+        except:#
+            s_val = ''#
+        print >>fo, '<td>%s</td>' % s_val #
+        try:#
+            s_val = qnspp.get(qn_name='v').qn_val#
+        except:#
+            s_val = ''#
+        print >>fo, '<td>%s</td>' % s_val #
+
         print >>fo, '</tr>'
         r_on, r_off = r_off, r_on
     print >>fo, '</table>\n</body>\n</html>'
@@ -156,7 +182,8 @@ def html_preamble():
 <meta name="description" content="HITRAN line-by-line search results"/>
 <title>HITRAN line-by-line search results</title>
 <style type="text/css">
-table {font-family: Courier;}
+table {font-family: Courier; text-align: right;}
+th {background-color: #fd8;}
 .re {background-color: #ddf;}
 .ro {background-color: #dfd;}
 </style>
