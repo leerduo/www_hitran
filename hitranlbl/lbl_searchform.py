@@ -1,31 +1,31 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 
-def convert_to_wavenumber(self, num, units):
+def convert_to_wavenumber(num, units):
         """
-        Convert the quantity num from units to cm-1. If num is zero and
+        Convert the quantity num from units to cm-1. If num None or zero and
         we attempt to divide by it, return None instead.
 
         """
 
-        if from_units == 'cm-1':
+        if num is None or units == 'cm-1':
             return num
         try:
-            if from_units == 'A':
+            if units == 'A':
                 num = 1.e8/num
-            elif from_units == 'nm':
+            elif units == 'nm':
                 num = 1.e7/num
-            elif from_units == 'um':
+            elif units == 'um':
                 num = 1.e4/num
-            elif from_units == 'Hz':
+            elif units == 'Hz':
                 num /= 2.99792458e10
-            elif from_units == 'kHz':
+            elif units == 'kHz':
                 num /= 2.99792458e7
-            elif from_units == 'MHz':
+            elif units == 'MHz':
                 num /= 2.99792458e4
-            elif from_units == 'GHz':
+            elif units == 'GHz':
                 num /= 29.9792458
-            elif from_units == 'THz':
+            elif units == 'THz':
                 num /= 2.99792458e-2
             else:
                 print 'unrecognised units: %s' % units
@@ -43,11 +43,14 @@ class LblSearchForm:
                 self.numin = None
             else:
                 self.numin = float(post_data.get('numin'))
-            self.numax = float(post_data.get('numax'))
+            if post_data.get('numax') == '':
+                self.numax = None
+            else:
+                self.numax = float(post_data.get('numax'))
             self.nu_units = post_data.get('numin_units')
 
             self.numin = convert_to_wavenumber(self.numin, self.nu_units)
-            self.numin = convert_to_wavenumber(self.numin, self.nu_units)
+            self.numax = convert_to_wavenumber(self.numax, self.nu_units)
 
             if post_data.get('Swmin') == '':
                 self.Swmin = None
@@ -56,14 +59,15 @@ class LblSearchForm:
             if self.Swmin < 0.:
                 # negative Swmin is silly but OK
                 self.Swmin = None
-            self.output_collection = post_data.getlist('output_collection')
+            self.output_collectionID = int(
+                    post_data.get('output_collection'))
             self.datestamp = datetime.strptime(post_data.get('date'),
                     '%Y-%m-%d').date()
         except ValueError:
             return
         if self.numin > self.numax:
             # numin must be <= numax
-            self.error_msg = '<p class="error_msg">Wavenumber/wavelength'
+            self.error_msg = '<p class="error_msg">Wavenumber/wavelength'\
                 'minimum must not be greater than maximum</p>'
             return
 

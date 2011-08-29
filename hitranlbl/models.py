@@ -30,7 +30,7 @@ class Trans(models.Model):
     Sw = models.FloatField()
     A = models.FloatField()
     multipole = models.CharField(max_length=2, blank=True, null=True)
-    elower = models.FloatField(blank=True, null=True)
+    Elower = models.FloatField(blank=True, null=True)
     gp = models.IntegerField(blank=True, null=True)
     gpp = models.IntegerField(blank=True, null=True)
     valid_from = models.DateField()
