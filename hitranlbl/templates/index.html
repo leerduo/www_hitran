@@ -172,6 +172,7 @@ function load_output_fields_html()
 <table>
 <tr>
 {% for molecule in present_molecules %}
+{% if forloop.counter0|divisibleby:4 %}</tr><tr>{% endif %}
 <td><input type="checkbox" name="molecule" value="{{ molecule.molecID }}"/>
 &nbsp;{{ molecule.ordinary_formula_html|safe }}</td>
 {% endfor %}
@@ -231,6 +232,7 @@ function load_output_fields_html()
 <p>Something went wrong - there should be a list of output fields here</p>
 </div>
 
+<p><input type="checkbox" name="get_states" value="yes"/>&nbsp;Retrieve states in separate file</p>
 
 </div> <!-- lblsearch_right_panel -->
 

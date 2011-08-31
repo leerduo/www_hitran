@@ -63,9 +63,13 @@ class LblSearchForm:
                     post_data.get('output_collection'))
             self.datestamp = datetime.strptime(post_data.get('date'),
                     '%Y-%m-%d').date()
+            self.get_states = False
+            if post_data.get('get_states'):
+                self.get_states = True
         except ValueError:
             return
-        if self.numin > self.numax:
+        if self.numin is not None and self.numax is not None and\
+                self.numin > self.numax:
             # numin must be <= numax
             self.error_msg = '<p class="error_msg">Wavenumber/wavelength'\
                 'minimum must not be greater than maximum</p>'

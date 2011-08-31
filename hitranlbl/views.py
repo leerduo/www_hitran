@@ -76,6 +76,8 @@ def do_search(form):
     # off the initial '0x' characters:
     filestem = hex(ts_int)[2:]
     output_files = make_html_files(form, filestem, transitions)
+    # strip path from output filenames:
+    output_files = [os.path.basename(x) for x in output_files]
 
     end_time = time.time()
         
@@ -86,7 +88,7 @@ def do_search(form):
     return output_files, search_summary
     
 def make_html_files(form, filestem, transitions):
-    filenames = []
+    output_files = []
     transpath = os.path.join(settings.RESULTSPATH, '%s-trans.html' % filestem)
     output_collection = output_collections[form.output_collectionID]
     output_fields = output_collection.output_field.all()
@@ -96,75 +98,91 @@ def make_html_files(form, filestem, transitions):
     print >>fo, '<tr>'
     for output_field in output_fields:
         print >>fo, '<th>%s</th>' % output_field.name_html
-    print >>fo, '<th>v&rsquo;</th><th>v&rdquo;</th>'#
     print >>fo, '</tr>'
-    r_on, r_off = 're', 'ro'
 
     field_eval = []
     prm_names = set()
+    get_qns = False
     for output_field in output_fields:
-        if output_field.name == 'molec_id':
-            field_eval.append('"%s" %% trans.iso.molecule.molecID'
-                % output_field.cfmt)
-        elif output_field.name == 'iso_id':
-            field_eval.append('"%s" %% trans.iso.isoID' % output_field.cfmt)
-        elif output_field.name in ('Elower', 'gp', 'gpp', 'par_line',
-                                   'multipole'):
-            field_eval.append('"%s" %% trans.%s'
-                % (output_field.cfmt, output_field.name))
-        elif output_field.name == 'stateIDp':
-            field_eval.append('"%s" %% trans.statep.id' % output_field.cfmt)
-        elif output_field.name == 'stateIDpp':
-            field_eval.append('"%s" %% trans.statepp.id' % output_field.cfmt)
-        elif len(output_field.name) > 4 and output_field.name[-4:] in (
+        if len(output_field.name) > 4 and output_field.name[-4:] in (
                     '.val', '.err', '.ref'):
             prm_names.add(output_field.name[:-4])
-            if output_field.name[-4:] == '.ref':
-                # XXX refID is actually a string: sort this out in the
-                # OutputFields model...
-                field_eval.append('"%%s" %% trans.%s.refID'
-                    % output_field.name)
-            else:
-                field_eval.append('"%s" %% trans.%s' % (output_field.cfmt,
-                    output_field.name))
-        else:
-            field_eval.append('***')
+        elif output_field.name.startswith('q_'):
+            get_qns = True
 
+    get_states = form.get_states
+    if get_states:
+        states = set()
+
+    r_on, r_off = 're', 'ro'
     for trans in transitions:
         # get all the parameters, and attach the ones we're going to output
-        # to the Trans instance
-        prms = trans.prm_set.all()
-        for prm_name in prm_names:
-            exec('trans.%s = prms.get(name="%s")' % (prm_name, prm_name))
+        # to the Trans instance (if there are any in the output fields)
+        if prm_names:
+            prms = trans.prm_set
+            for prm_name in prm_names:
+                exec('trans.%s = prms.get(name="%s")' % (prm_name, prm_name))
 
-        qnsp = trans.statep.qns_set #
-        qnspp = trans.statepp.qns_set #
+        if get_states:
+            states.add(trans.statep)
+            states.add(trans.statepp)
+
+        # only hit the database for the quantum numbers if we have to
+        if get_qns:
+            qnsp = trans.statep.qns_set
+            qnspp = trans.statepp.qns_set
             
         print >>fo, '<tr class="%s">' % r_on
         for i, output_field in enumerate(output_fields):
             try:
-                s_val = eval(field_eval[i])
+                s_val = eval(output_field.eval_str)
             except:
                 #print field_eval[i]
                 s_val = '###'
-            print >>fo, '<td>%s</td>' % s_val
-
-        try:#
-            s_val = qnsp.get(qn_name='v').qn_val#
-        except:#
-            s_val = ''#
-        print >>fo, '<td>%s</td>' % s_val #
-        try:#
-            s_val = qnspp.get(qn_name='v').qn_val#
-        except:#
-            s_val = ''#
-        print >>fo, '<td>%s</td>' % s_val #
+            if output_field.name == 'par_line':
+                # preserve whitespace in the par_line output:
+                print >>fo, '<td><pre>%s</pre></td>' % s_val
+            else:
+                print >>fo, '<td>%s</td>' % s_val
 
         print >>fo, '</tr>'
         r_on, r_off = r_off, r_on
     print >>fo, '</table>\n</body>\n</html>'
     fo.close()
-    filenames.append(transpath)
+    output_files.append(transpath)
+
+    if get_states:
+        statespath = os.path.join(settings.RESULTSPATH,
+                        '%s-states.html' % filestem)
+        fo = open(statespath, 'w')
+        print >>fo, html_preamble()
+        print >>fo, '<table>'
+        print >>fo, '<tr>'
+        print >>fo, '<th>id</th><th>molec_id</th><th>iso_id</th>'\
+                    '<th><em>E</em></th><th><em>g</em></th><th>[QNs]</th>'
+        print >>fo, '</tr>'
+        r_on, r_off = 're', 'ro'
+        for state in states:
+            try:
+                s_E = '%10.4f' % state.energy
+            except TypeError:
+                s_E = '###'
+            try:
+                s_g = '%5d' % state.g
+            except TypeError:
+                s_g = '###'
+            s_qns = state.s_qns or '###'
+            print >>fo, '<tr class="%s">' % r_on
+            print >>fo, '<td>%12d</td><td>%2d</td><td>%1d</td><td>%s</td>'\
+                        '<td>%s</td><td>%s</td>' % (state.id,
+                        state.iso.molecule.molecID, state.iso.isoID,
+                        s_E, s_g, s_qns)
+            r_on, r_off = r_off, r_on
+            
+        print >>fo, '</table>\n</body>\n</html>'
+        fo.close()
+        output_files.append(statespath)
+    return output_files
 
 def html_preamble():
     """
@@ -186,6 +204,7 @@ table {font-family: Courier; text-align: right;}
 th {background-color: #fd8;}
 .re {background-color: #ddf;}
 .ro {background-color: #dfd;}
+pre {padding: 0 0 0 0; margin: 0 0 0 0;}
 </style>
 </head>
 </body>

@@ -38,10 +38,9 @@ h1 {
 
 #output_fields table {
     width: 95%;
-    margin: auto;
-    margin: 10px auto 10px auto;
     border-collapse: collapse;
     border: black solid 1px;
+    margin: 10px auto 10px auto;
     padding: 5px 10px 10px 5px;
 }
 
@@ -54,7 +53,7 @@ h1 {
 }
 
 #output_fields td {
-    padding: 5px 20px 0px 5px;
+    padding: 5px 20px 4px 5px;
     margin: 0 0 0 0;
 }
 

@@ -37,6 +37,7 @@ class Trans(models.Model):
     # the default is for this data 'never' to expire:
     valid_to = models.DateField(default=datetime.date(
             year=3000, month=1, day=1))
+    par_line = models.CharField(max_length=160, blank=True, null=True)
     
     class Meta:
         app_label = 'hitranlbl'
