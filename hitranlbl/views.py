@@ -17,7 +17,7 @@ present_molecules = Molecule.objects.filter(molecID__in=p_ids)
 output_collections = OutputCollection.objects.all()
 
 # Limit the number of returned transitions to TRANSLIM, if not None:
-TRANSLIM = 10
+TRANSLIM = 100
 
 def index(request):
     if request.POST:
@@ -86,7 +86,7 @@ def do_search(form):
     search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
 
     return output_files, search_summary
-    
+
 def make_html_files(form, filestem, transitions):
     output_files = []
     transpath = os.path.join(settings.RESULTSPATH, '%s-trans.html' % filestem)
@@ -100,7 +100,6 @@ def make_html_files(form, filestem, transitions):
         print >>fo, '<th>%s</th>' % output_field.name_html
     print >>fo, '</tr>'
 
-    field_eval = []
     prm_names = set()
     get_qns = False
     for output_field in output_fields:
@@ -114,6 +113,10 @@ def make_html_files(form, filestem, transitions):
     if get_states:
         states = set()
 
+    get_refs = True
+    if get_refs:
+        refs = set()
+
     r_on, r_off = 're', 'ro'
     for trans in transitions:
         # get all the parameters, and attach the ones we're going to output
@@ -122,6 +125,8 @@ def make_html_files(form, filestem, transitions):
             prms = trans.prm_set
             for prm_name in prm_names:
                 exec('trans.%s = prms.get(name="%s")' % (prm_name, prm_name))
+                if get_refs:
+                    exec('refs.add(trans.%s.ref)' % prm_name)
 
         if get_states:
             states.add(trans.statep)
@@ -133,11 +138,10 @@ def make_html_files(form, filestem, transitions):
             qnspp = trans.statepp.qns_set
             
         print >>fo, '<tr class="%s">' % r_on
-        for i, output_field in enumerate(output_fields):
+        for output_field in output_fields:
             try:
                 s_val = eval(output_field.eval_str)
             except:
-                #print field_eval[i]
                 s_val = '###'
             if output_field.name == 'par_line':
                 # preserve whitespace in the par_line output:
@@ -182,7 +186,58 @@ def make_html_files(form, filestem, transitions):
         print >>fo, '</table>\n</body>\n</html>'
         fo.close()
         output_files.append(statespath)
+
+    if get_refs:
+        refspath = os.path.join(settings.RESULTSPATH,
+                      '%s-refs.html' % filestem)
+        fo = open(refspath, 'w')
+        print >>fo, html_refs_preamble()
+        print >>fo, '<table>'
+        print >>fo, '<tr><th>id</th><th>reference</th></tr>'
+        r_on, r_off = 're', 'ro'
+        for ref in refs:
+            if ref is None:
+                continue
+            print >>fo, '<tr class="%s">' % r_on
+            print >>fo, '<td class="ref">%s</td>' % ref.refID
+            print >>fo, '<td>',
+            print >>fo, unicode(ref.cited_as_html).encode('utf-8'),
+            if ref.url:
+                print >>fo, '[<a href="%s">url</a>]' % ref.url
+            print >>fo, '</td>'
+            print >>fo, '</tr>'
+            r_on, r_off = r_off, r_on
+        print >>fo, '</table>'
+        fo.close()
+        output_files.append(refspath)
+
     return output_files
+
+def html_refs_preamble():
+    """
+    Return the header and stylesheet preamble for the line-by-line search
+    results page.
+
+    """
+
+    return """
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-srict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+<meta name="description" content="HITRAN line-by-line search results"/>
+<title>HITRAN line-by-line search results</title>
+<style type="text/css">
+table {font-family: serif; text-align: left; width: 800px;}
+th {background-color: #fd8;}
+.re {background-color: #ddf;}
+.ro {background-color: #dfd;}
+.ref {font-family: Courier; text-align: right;}
+</style>
+</head>
+</body>
+"""
 
 def html_preamble():
     """

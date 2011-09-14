@@ -49,7 +49,6 @@ class Iso(models.Model):
         app_label='hitranmeta'
 
 class Case(models.Model):
-    caseID = models.IntegerField(unique=True)
     case_prefix = models.CharField(max_length=10, unique=True)
     case_description = models.CharField(max_length=50)
     class Meta:

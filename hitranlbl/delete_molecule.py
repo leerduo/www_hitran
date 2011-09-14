@@ -29,13 +29,17 @@ isoIDs = [int(x[0]) for x in cursor.fetchall()]
 print isoIDs
 s_isoIDs = '(%s)' % (', '.join(['%d' % isoID for isoID in isoIDs]))
 
-command = 'DELETE FROM hitranmeta_prm WHERE trans_id IN (SELECT id FROM'\
+command = 'DELETE FROM hitranlbl_prm WHERE trans_id IN (SELECT id FROM'\
           ' hitranlbl_trans WHERE iso_id IN %s)' % (s_isoIDs)
 print command
-command = 'DELETE FROM hitranmeta_qns WHERE state_id IN (SELECT id FROM'\
+cursor.execute(command)
+command = 'DELETE FROM hitranlbl_qns WHERE state_id IN (SELECT id FROM'\
           ' hitranlbl_state WHERE iso_id IN %s)' % (s_isoIDs)
 print command
-command = 'DELETE FROM hitranmeta_trans WHERE iso_id in %s' % (s_isoIDs)
+cursor.execute(command)
+command = 'DELETE FROM hitranlbl_trans WHERE iso_id in %s' % (s_isoIDs)
 print command
-command = 'DELETE FROM hitranmeta_state WHERE iso_id in %s' % (s_isoIDs)
+cursor.execute(command)
+command = 'DELETE FROM hitranlbl_state WHERE iso_id in %s' % (s_isoIDs)
 print command
+cursor.execute(command)

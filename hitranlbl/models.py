@@ -19,6 +19,7 @@ class State(models.Model):
     g = models.IntegerField(blank=True, null=True)
     s_qns = models.CharField(max_length=500, blank=True, null=True)
     qns_xml = models.TextField(blank=True, null=True)
+
     class Meta:
         app_label = 'hitranlbl'
 
