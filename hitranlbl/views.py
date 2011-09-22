@@ -17,7 +17,7 @@ present_molecules = Molecule.objects.filter(molecID__in=p_ids)
 output_collections = OutputCollection.objects.all()
 
 # Limit the number of returned transitions to TRANSLIM, if not None:
-TRANSLIM = 100
+TRANSLIM = None
 
 def index(request):
     if request.POST:

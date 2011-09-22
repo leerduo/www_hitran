@@ -1,0 +1,112 @@
+hitranmeta_moleculename
++-------------+--------------+------+-----+---------+----------------+
+| Field       | Type         | Null | Key | Default | Extra          |
++-------------+--------------+------+-----+---------+----------------+
+| id          | int(11)      | NO   | PRI | NULL    | auto_increment |
+| name        | varchar(100) | NO   |     | NULL    |                |
+| molecule_id | int(11)      | NO   | MUL | NULL    |                |
++-------------+--------------+------+-----+---------+----------------+
+
+hitranmeta_molecule
++------------------------+--------------+------+-----+---------+-------+
+| Field                  | Type         | Null | Key | Default | Extra |
++------------------------+--------------+------+-----+---------+-------+
+| molecID                | int(11)      | NO   | PRI | NULL    |       |
+| molecID_str            | varchar(40)  | NO   |     | NULL    |       |
+| InChI                  | varchar(200) | NO   | UNI | NULL    |       |
+| InChIKey               | varchar(27)  | NO   | UNI | NULL    |       |
+| stoichiometric_formula | varchar(40)  | NO   |     | NULL    |       |
+| ordinary_formula       | varchar(40)  | NO   |     | NULL    |       |
+| ordinary_formula_html  | varchar(200) | NO   |     | NULL    |       |
+| common_name            | varchar(100) | YES  |     | NULL    |       |
+| cml                    | longtext     | YES  |     | NULL    |       |
++------------------------+--------------+------+-----+---------+-------+
+
+hitranmeta_iso
++-------------------+--------------+------+-----+---------+----------------+
+| Field             | Type         | Null | Key | Default | Extra          |
++-------------------+--------------+------+-----+---------+----------------+
+| id                | int(11)      | NO   | PRI | NULL    | auto_increment |
+| isoID             | int(11)      | NO   |     | NULL    |                |
+| isoID_str         | varchar(50)  | NO   |     | NULL    |                |
+| InChI_explicit    | varchar(200) | YES  | UNI | NULL    |                |
+| InChIKey_explicit | varchar(27)  | YES  | UNI | NULL    |                |
+| InChI             | varchar(200) | NO   | UNI | NULL    |                |
+| InChIKey          | varchar(27)  | NO   | UNI | NULL    |                |
+| molecule_id       | int(11)      | NO   | MUL | NULL    |                |
+| iso_name          | varchar(100) | NO   |     | NULL    |                |
+| iso_name_html     | varchar(500) | NO   |     | NULL    |                |
+| abundance         | double       | YES  |     | NULL    |                |
+| afgl_code         | varchar(10)  | YES  |     | NULL    |                |
+| cml_explicit      | longtext     | YES  |     | NULL    |                |
+| cml               | longtext     | YES  |     | NULL    |                |
+| case_id           | int(11)      | YES  | MUL | NULL    |                |
++-------------------+--------------+------+-----+---------+----------------+
+
+hitranmeta_case
++------------------+-------------+------+-----+---------+----------------+
+| Field            | Type        | Null | Key | Default | Extra          |
++------------------+-------------+------+-----+---------+----------------+
+| id               | int(11)     | NO   | PRI | NULL    | auto_increment |
+| case_prefix      | varchar(10) | NO   | UNI | NULL    |                |
+| case_description | varchar(50) | NO   |     | NULL    |                |
++------------------+-------------+------+-----+---------+----------------+
+
+hitranlbl_trans
++------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| id         | int(11)      | NO   | PRI | NULL    | auto_increment |
+| iso_id     | int(11)      | NO   | MUL | NULL    |                |
+| statep_id  | int(11)      | NO   | MUL | NULL    |                |
+| statepp_id | int(11)      | NO   | MUL | NULL    |                |
+| nu         | double       | NO   |     | NULL    |                |
+| Sw         | double       | NO   |     | NULL    |                |
+| A          | double       | NO   |     | NULL    |                |
+| multipole  | varchar(2)   | YES  |     | NULL    |                |
+| Elower     | double       | YES  |     | NULL    |                |
+| gp         | int(11)      | YES  |     | NULL    |                |
+| gpp        | int(11)      | YES  |     | NULL    |                |
+| valid_from | date         | NO   |     | NULL    |                |
+| valid_to   | date         | NO   |     | NULL    |                |
+| par_line   | varchar(160) | YES  |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+
+
+hitranlbl_prm
++----------+-------------+------+-----+---------+----------------+
+| Field    | Type        | Null | Key | Default | Extra          |
++----------+-------------+------+-----+---------+----------------+
+| id       | int(11)     | NO   | PRI | NULL    | auto_increment |
+| trans_id | int(11)     | NO   | MUL | NULL    |                |
+| name     | varchar(20) | NO   |     | NULL    |                |
+| val      | double      | NO   |     | NULL    |                |
+| err      | double      | YES  |     | NULL    |                |
+| ref_id   | int(11)     | YES  | MUL | NULL    |                |
+| method   | int(11)     | YES  |     | NULL    |                |
++----------+-------------+------+-----+---------+----------------+
+
+hitranlbl_state
++---------+--------------+------+-----+---------+----------------+
+| Field   | Type         | Null | Key | Default | Extra          |
++---------+--------------+------+-----+---------+----------------+
+| id      | int(11)      | NO   | PRI | NULL    | auto_increment |
+| iso_id  | int(11)      | NO   | MUL | NULL    |                |
+| energy  | double       | YES  |     | NULL    |                |
+| g       | int(11)      | YES  |     | NULL    |                |
+| s_qns   | varchar(500) | YES  |     | NULL    |                |
+| qns_xml | longtext     | YES  |     | NULL    |                |
++---------+--------------+------+-----+---------+----------------+
+
+hitranlbl_qns
++----------+--------------+------+-----+---------+----------------+
+| Field    | Type         | Null | Key | Default | Extra          |
++----------+--------------+------+-----+---------+----------------+
+| id       | int(11)      | NO   | PRI | NULL    | auto_increment |
+| case_id  | int(11)      | NO   | MUL | NULL    |                |
+| state_id | int(11)      | NO   | MUL | NULL    |                |
+| qn_name  | varchar(20)  | NO   |     | NULL    |                |
+| qn_val   | varchar(10)  | NO   |     | NULL    |                |
+| qn_attr  | varchar(50)  | YES  |     | NULL    |                |
+| xml      | varchar(500) | NO   |     | NULL    |                |
++----------+--------------+------+-----+---------+----------------+
+

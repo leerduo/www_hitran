@@ -43,3 +43,6 @@ cursor.execute(command)
 command = 'DELETE FROM hitranlbl_state WHERE iso_id in %s' % (s_isoIDs)
 print command
 cursor.execute(command)
+
+conn.commit()
+conn.close()
