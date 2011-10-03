@@ -53,9 +53,13 @@ for i, trans in enumerate(transitions):
     this_trans.gamma_air = HITRANParam(val=prms.get(name="gamma_air").val,
                 ref=int(Iref[4:6]), name='gamma_air', ierr=int(Ierr[2]),
                 relative=True)
-    this_trans.gamma_self = HITRANParam(val=prms.get(name="gamma_self").val,
-        ref=int(Iref[6:8]), name='gamma_self', ierr=int(Ierr[3]),
-        relative=True)
+    try:
+        this_trans.gamma_self = HITRANParam(
+            val=prms.get(name="gamma_self").val,
+            ref=int(Iref[6:8]), name='gamma_self', ierr=int(Ierr[3]),
+            relative=True)
+    except Prm.DoesNotExist:
+        pass
     this_trans.n_air = HITRANParam(val=prms.get(name="n_air").val,
         ref=int(Iref[8:10]), name='n_air', ierr=int(Ierr[4]),
         relative=True)
