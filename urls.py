@@ -9,6 +9,8 @@ urlpatterns = patterns('',
     # Examples:
     # url(r'^$', 'HITRAN.views.home', name='home'),
     url(r'^HITRAN/lbl/$', 'HITRAN.hitranlbl.views.index'),
+    url(r'^HITRAN/cia/$', 'HITRAN.hitrancia.views.index'),
+    url(r'^HITRAN/xsc/$', 'HITRAN.hitranxsc.views.index'),
 
     # Uncomment the admin/doc line below to enable admin documentation:
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
@@ -23,3 +25,40 @@ if settings.DEBUG:
         'django.views.static.serve', {'document_root': settings.RESULTSPATH,
         }),
     )
+    urlpatterns += patterns('',
+        url(r'^HITRAN/cia/results/(?P<path>.*.tgz)$',
+        'django.views.static.serve', {'document_root':
+                                        settings.RESULTSPATH,
+        }),
+    )
+    urlpatterns += patterns('',
+        url(r'^HITRAN/cia/results/(?P<path>.*.xsams)$',
+        'django.views.static.serve', {'document_root':
+                                        settings.RESULTSPATH,
+        }),
+    )
+    urlpatterns += patterns('',
+        url(r'^HITRAN/cia/results/(?P<path>.*)$',
+        'django.views.static.serve', {'document_root':
+                                        settings.RESULTSPATH + '/cia',
+        }),
+    )
+    urlpatterns += patterns('',
+        url(r'^HITRAN/xsc/results/(?P<path>.*.tgz)$',
+        'django.views.static.serve', {'document_root':
+                                        settings.RESULTSPATH,
+        }),
+    )
+    urlpatterns += patterns('',
+        url(r'^HITRAN/xsc/results/(?P<path>.*.xsams)$',
+        'django.views.static.serve', {'document_root':
+                                        settings.RESULTSPATH,
+        }),
+    )
+    urlpatterns += patterns('',
+        url(r'^HITRAN/xsc/results/(?P<path>.*)$',
+        'django.views.static.serve', {'document_root':
+                                        settings.RESULTSPATH + '/xsc',
+        }),
+    )
+    

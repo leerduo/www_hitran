@@ -1,0 +1,29 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-srict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+<meta name="author" content="Christian Hill"/>
+<meta name="keywords" content="HITRAN, collision-induced absorption, atmosphere, spectroscopy, database, search"/>
+<meta name="description" content="HITRAN collision-induced absorption search"/>
+<meta name="robots" content="all"/>
+
+<title>HITRAN collision-induced absorption search</title>
+<link rel="stylesheet" href="/static/css/layout.css" type="text/css" media="screen"/>
+</head>
+
+<body>
+<div id="content">
+
+{{ search_summary.summary_html|safe }}
+<p>The output files are:</p>
+<ul>
+{% for output_file in output_files %}
+<li><a href="results/{{ output_file.filename }}">{{ output_file.filename }}</a>: {{ output_file.desc }}</li>
+{% endfor %}
+</ul>
+
+</div> <!-- content -->
+
+</body>
+</html>

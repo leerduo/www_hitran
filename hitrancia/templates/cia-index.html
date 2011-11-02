@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-srict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+<meta name="author" content="Christian Hill"/>
+<meta name="keywords" content="HITRAN, collision-induced absorption, atmosphere, spectroscopy, database, search"/>
+<meta name="description" content="HITRAN collision-induced absorption search"/>
+<meta name="robots" content="all"/>
+
+<title>HITRAN collision-induced absorption search</title>
+<link rel="stylesheet" href="/static/css/layout.css" type="text/css" media="screen"/>
+
+<script type="text/javascript">
+/* when the requested wavenumber/wavelength search units are changed,
+   this function gets called to change the HTML to reflect the new maximum
+   and minimum wavelength/wavenumber labels and units */
+function change_units()
+{
+    
+    oNuMinUnits = document.SearchForm.elements["numin_units"];
+    oNuMaxUnits = document.getElementById("numax_units");
+    oNuMinLabel = document.getElementById("numin_label");
+    oNuMaxLabel = document.getElementById("numax_label");
+    units = oNuMinUnits.value;
+
+    freq = false;
+    freq_units_array = ['cm-1', 'MHz', 'GHz'];
+    for (var i=0; i<freq_units_array.length; i++) {
+        freq_units = freq_units_array[i];
+        if (units == freq_units) {
+            freq = true;
+            break;
+        }
+    }
+    if (freq) {
+        oNuMinLabel.innerHTML = '<em>&nu;</em><sub>min</sub>';
+        oNuMaxLabel.innerHTML = '<em>&nu;</em><sub>max</sub>';
+    } else {
+        oNuMinLabel.innerHTML = '<em>&lambda;</em><sub>min</sub>';
+        oNuMaxLabel.innerHTML = '<em>&lambda;</em><sub>max</sub>';
+    }
+
+    if (units == 'cm-1') {
+        units = 'cm<sup>-1</sup>';
+    } else if (units == 'A') {
+        units = '&Aring;';
+    } else if (units == 'um') {
+        units = '&mu;m';
+    }
+    oNuMaxUnits.innerHTML = units;
+}
+
+/* fill the 'Valid on' date box with today's date. This function is called
+   on page load */
+function fill_current_date()
+{
+    date_box = document.getElementById("date");
+    var today = new Date();
+    // God, JavaScript is awful:
+    date_box.value = today.getFullYear() + '-' + (today.getMonth()+1)
+            + '-' + today.getDate();
+}
+</script>
+
+</head>
+<body onload="fill_current_date();">
+
+<h1>HITRAN collision-induced absorption search</h1>
+
+<form name="SearchForm" method="POST">{% csrf_token %}
+
+<div id="content">
+
+<!-- the molecule checkboxes -->
+<table>
+<tr>
+{% for collision_pair in collision_pairs %}
+{% if forloop.counter0|divisibleby:4 %}</tr><tr>{% endif %}
+<td><input type="checkbox" name="collision_pair" value="{{ collision_pair.id }}"/>
+&nbsp;{{ collision_pair.pair_name_html|safe }}</td>
+{% endfor %}
+</tr>
+</table>
+
+<!-- search parameters such as wavelength/wavenumber interval -->
+<table>
+<!-- wavelength/wavenumber minimum, with units selection -->
+<tr>
+<td id="numin_label"><em>&nu;</em><sub>min</sub></td>
+<td><input type="text" name="numin"></td>
+<td><select onchange="JavaScript:change_units()" name="numin_units">
+    <option value="cm-1" selected>cm-1</option>
+    <option value="nm">nm</option>
+    <option value="A">&Aring;</option>
+    <option value="um">&mu;m</option>
+    <option value="MHz">MHz</option>
+    <option value="GHz">GHz</option>
+</select></td>
+</tr>
+<!-- wavelength/wavenumber maximum -->
+<tr>
+<td id="numax_label"><em>&nu;</em><sub>max</sub></td>
+<td><input type="text" name="numax"></td>
+<td id="numax_units">cm<sup>-1</sup></td>
+</tr>
+<!-- temperature minimum and maximum -->
+<tr>
+<td><em>T</em><sub>min</sub></td>
+<td><input type="text" name="Tmin"></td>
+<td>K</td>
+<tr>
+<td><em>T</em><sub>max</sub></td>
+<td><input type="text" name="Tmax"></td>
+<td>K</td>
+</tr>
+<!-- valid-on date -->
+<tr>
+<td>Valid on</td>
+<td><input type="text" name="date" id="date"/></td>
+</tr>
+<!-- output formats -->
+<tr>
+<td><input type="checkbox" name="output_format" value="cia" checked/>&nbsp;CIA</td>
+<td><input type="checkbox" name="output_format" value="xsams"/>&nbsp;XSAMS</td>
+</tr>
+</table>
+
+<!-- the 'Submit Query' button -->
+<div style="clear: both; width: 200px; margin: auto;">
+<br/><br/>
+<input type="submit" value="Submit Query"/>
+</div>
+
+</div> <!-- content -->
+
+</form>
+</body>
+</html>
