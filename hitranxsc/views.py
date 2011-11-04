@@ -59,6 +59,10 @@ def do_search(form):
         query = query & Q(p__gte=form.pmin)
     if form.pmax:
         query = query & Q(p__lte=form.pmax)
+    # query for min_sigmax: only return cross sections where sigmax is
+    # greater than or equal to min_sigmax
+    if form.min_sigmax:
+        query = query & Q(sigmax__gte=form.min_sigmax)
     # query for the date range
     query = query & Q(valid_from__lte=form.datestamp)
     query = query & Q(valid_to__gte=form.datestamp)

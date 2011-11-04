@@ -103,6 +103,11 @@ class XscSearchForm:
             self.pmin = convert_to_torr(self.pmin, self.p_units)
             self.pmax = convert_to_torr(self.pmax, self.p_units)
 
+            if post_data.get('min_sigmax').strip() == '':
+                self.min_sigmax = None
+            else:
+                self.min_sigmax = float(post_data.get('min_sigmax'))
+
             self.datestamp = datetime.strptime(post_data.get('date'),
                     '%Y-%m-%d').date()
         except ValueError:

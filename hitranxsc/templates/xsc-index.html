@@ -138,16 +138,26 @@ function fill_current_date()
 <td><input type="text" name="pmax"></td>
 <td id="pmax_units">Torr</td>
 </tr>
+
+<!-- minimum sigmax -->
+<tr>
+<td>min <em>&sigma;</em><sub>max</sub></td>
+<td><input type="text" name="min_sigmax"></td>
+<td>cm<sup>2</sup>molec<sup>-1</sup></td>
+</tr>
+
 <!-- valid-on date -->
 <tr>
 <td>Valid on</td>
 <td><input type="text" name="date" id="date"/></td>
 </tr>
+</table>
+<p>Output Formats</p>
+<table>
 <!-- output formats -->
 <tr>
-<td><input type="checkbox" name="output_format" value="xsc" checked/>&nbsp;XSC</td>
-<td><input type="checkbox" name="output_format" value="xsams"/>&nbsp;XSAMS</td>
-</tr>
+<td><input type="checkbox" name="output_format" value="xsc" checked/>&nbsp;.xsc: native HITRAN format</td></tr>
+<tr><td><input type="checkbox" name="output_format" value="xsams"/>&nbsp;XSAMS</td></tr>
 </table>
 
 <!-- the 'Submit Query' button -->
