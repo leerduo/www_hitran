@@ -86,16 +86,17 @@ hitranlbl_prm
 +----------+-------------+------+-----+---------+----------------+
 
 hitranlbl_state
-+---------+--------------+------+-----+---------+----------------+
-| Field   | Type         | Null | Key | Default | Extra          |
-+---------+--------------+------+-----+---------+----------------+
-| id      | int(11)      | NO   | PRI | NULL    | auto_increment |
-| iso_id  | int(11)      | NO   | MUL | NULL    |                |
-| energy  | double       | YES  |     | NULL    |                |
-| g       | int(11)      | YES  |     | NULL    |                |
-| s_qns   | varchar(500) | YES  |     | NULL    |                |
-| qns_xml | longtext     | YES  |     | NULL    |                |
-+---------+--------------+------+-----+---------+----------------+
++---------------+--------------+------+-----+---------+----------------+
+| Field         | Type         | Null | Key | Default | Extra          |
++---------------+--------------+------+-----+---------+----------------+
+| id            | int(11)      | NO   | PRI | NULL    | auto_increment |
+| iso_id        | int(11)      | NO   | MUL | NULL    |                |
+| energy        | double       | YES  |     | NULL    |                |
+| g             | int(11)      | YES  |     | NULL    |                |
+| nucspin_label | char(1)      | YES  |     | NULL    |                |
+| s_qns         | varchar(500) | YES  |     | NULL    |                |
+| qns_xml       | longtext     | YES  |     | NULL    |                |
++---------------+--------------+------+-----+---------+----------------+
 
 hitranlbl_qns
 +----------+--------------+------+-----+---------+----------------+

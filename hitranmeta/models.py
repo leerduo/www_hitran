@@ -1,4 +1,5 @@
 from django.db import models
+import datetime
 
 class Molecule(models.Model):
     molecID = models.IntegerField(primary_key=True, unique=True)
@@ -93,6 +94,24 @@ class Ref(models.Model):
     def __unicode__(self):
         return self.refID
 
+    class Meta:
+        app_label='hitranmeta'
+
+class PartitionFunction(models.Model):
+    # the isotopologue that this partition function belongs to
+    iso = models.ForeignKey('Iso')
+    # the minimum and maximum temperatures for which Q is given
+    Tmin = models.FloatField()
+    Tmax = models.FloatField()
+    # the temperature grid spacing
+    dT = models.FloatField()
+    # the number of points in the partition function table
+    n = models.IntegerField()
+    valid_from = models.DateField()
+    # the default is for this data 'never' to expire:
+    valid_to = models.DateField(default=datetime.date(
+            year=3000, month=1, day=1))
+    filename = models.CharField(max_length=100)
     class Meta:
         app_label='hitranmeta'
 
