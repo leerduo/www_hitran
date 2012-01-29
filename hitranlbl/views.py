@@ -16,9 +16,6 @@ present_molecules = Molecule.objects.filter(molecID__in=p_ids)
 
 output_collections = OutputCollection.objects.all()
 
-# Limit the number of returned transitions to TRANSLIM, if not None:
-TRANSLIM = None
-
 def index(request):
     if request.POST:
         form = LblSearchForm(request.POST)
@@ -64,12 +61,12 @@ def do_search(form):
     transitions = Trans.objects.filter(query).select_related().order_by('nu')
     ntrans = transitions.count()
     percent_returned = 100.
-    if TRANSLIM is not None and ntrans > TRANSLIM:
-        transitions = Trans.objects.filter(query).select_related()[:TRANSLIM]
-        percent_returned = float(TRANSLIM)/ntrans * 100.
-        ntrans = TRANSLIM
+    if settings.TRANSLIM is not None and ntrans > settings.TRANSLIM:
+        transitions = Trans.objects.filter(query).select_related()[:settings.TRANSLIM]
+        percent_returned = float(settings.TRANSLIM)/ntrans * 100.
+        ntrans = settings.TRANSLIM
 
-    if TIMED_FILENAMES:
+    if settings.TIMED_FILENAMES:
         # integer timestamp: the number of seconds since 00:00 1 January 1970
         ts_int = int(time.mktime(datetime.datetime.utcnow().timetuple()))
     else:
