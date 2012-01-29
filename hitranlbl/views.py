@@ -60,6 +60,7 @@ def do_search(form):
         query = query & Q(Sw__gte=form.Swmin)
     query = query & Q(valid_from__lte=form.datestamp)
     query = query & Q(valid_to__gte=form.datestamp)
+
     transitions = Trans.objects.filter(query).select_related().order_by('nu')
     ntrans = transitions.count()
     percent_returned = 100.
@@ -68,10 +69,12 @@ def do_search(form):
         percent_returned = float(TRANSLIM)/ntrans * 100.
         ntrans = TRANSLIM
 
-    # integer timestamp: the number of seconds since 00:00 1 January 1970
-    #ts_int = int(time.mktime(datetime.datetime.utcnow().timetuple()))
-    # XXX temporary: use a fixed, constant filestem:
-    ts_int=1285072598
+    if TIMED_FILENAMES:
+        # integer timestamp: the number of seconds since 00:00 1 January 1970
+        ts_int = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+    else:
+        # otherwise use a fixed timestamp for generating the filename
+        ts_int=1285072598
     # make the timestamp from the hex representation of ts_int, stripping
     # off the initial '0x' characters:
     filestem = hex(ts_int)[2:]
