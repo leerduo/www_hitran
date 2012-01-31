@@ -62,7 +62,8 @@ def do_search(form):
     ntrans = transitions.count()
     percent_returned = 100.
     if settings.TRANSLIM is not None and ntrans > settings.TRANSLIM:
-        transitions = Trans.objects.filter(query).select_related()[:settings.TRANSLIM]
+        numax = transitions[TRANSLIM].nu
+        transitions = Trans.objects.filter(query, Q(nu__lte=numax))
         percent_returned = float(settings.TRANSLIM)/ntrans * 100.
         ntrans = settings.TRANSLIM
 
@@ -75,6 +76,8 @@ def do_search(form):
     # make the timestamp from the hex representation of ts_int, stripping
     # off the initial '0x' characters:
     filestem = hex(ts_int)[2:]
+
+    # here's where we make the HTML to be returned
     output_files = make_html_files(form, filestem, transitions)
     # strip path from output filenames:
     output_files = [os.path.basename(x) for x in output_files]
@@ -114,19 +117,14 @@ def make_html_files(form, filestem, transitions):
         states = set()
 
     get_refs = True
-    if get_refs:
-        refs = set()
+    ref_ids = set()
+    refs = set()
 
     r_on, r_off = 're', 'ro'
     for trans in transitions:
-        # get all the parameters, and attach the ones we're going to output
-        # to the Trans instance (if there are any in the output fields)
-        if prm_names:
-            prms = trans.prm_set
-            for prm_name in prm_names:
-                exec('trans.%s = prms.get(name="%s")' % (prm_name, prm_name))
-                if get_refs:
-                    exec('refs.add(trans.%s.ref)' % prm_name)
+        for prm in trans.prm_set.all():
+            exec('trans.%s = prm' % prm.name)
+            ref_ids.add(prm.ref_id)
 
         if get_states:
             states.add(trans.statep)
