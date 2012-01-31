@@ -4,11 +4,12 @@ from django.core.context_processors import csrf
 from django.shortcuts import render_to_response
 from models import *
 from django.db.models import Q
-from hitranmeta.models import Molecule, OutputCollection, Iso
+from hitranmeta.models import Molecule, OutputCollection, Iso, Ref
 from lbl_searchform import LblSearchForm
 import os
 import time
 import datetime
+from itertools import chain
 
 # get a list of molecule objects with entries in the Trans table
 p_ids = Trans.objects.values('iso__molecule').distinct()
@@ -65,7 +66,10 @@ def do_search(form):
         numax = transitions[TRANSLIM].nu
         transitions = Trans.objects.filter(query, Q(nu__lte=numax))
         percent_returned = float(settings.TRANSLIM)/ntrans * 100.
+        print 'Results truncated to %.1f %%' % percent_returned
         ntrans = settings.TRANSLIM
+    else:
+        print 'Results not truncated'
 
     if settings.TIMED_FILENAMES:
         # integer timestamp: the number of seconds since 00:00 1 January 1970
@@ -77,8 +81,28 @@ def do_search(form):
     # off the initial '0x' characters:
     filestem = hex(ts_int)[2:]
 
+    # attach the parameters to the transitions, returning their set of
+    # reference IDs
+    ts = time.time()
+    ref_ids = attach_prms(transitions)
+    te = time.time()
+    print 'time to attach parameters = %.1f secs' % (te-ts)
+
+    # get the sources (reference) from the ref_ids set
+    ts = time.time()
+    sources = get_sources(ref_ids)
+    te = time.time()
+    print 'time to get sources = %.1f secs' % (te-ts)
+
+    # get the species and states involved in the selected transitions
+    ts = time.time()
+    species, nspecies, nstates = get_species(transitions)
+    te = time.time()
+    print 'time to get species = %.1f secs' % (te-ts)
+
     # here's where we make the HTML to be returned
-    output_files = make_html_files(form, filestem, transitions)
+    output_files = make_html_files(form, filestem, transitions, sources,
+                                   species)
     # strip path from output filenames:
     output_files = [os.path.basename(x) for x in output_files]
 
@@ -90,11 +114,64 @@ def do_search(form):
 
     return output_files, search_summary
 
-def make_html_files(form, filestem, transitions):
+def attach_prms(transitions):
+    """
+    Attach the parameters for each transition to its Trans object as
+    prm.val, prm.err, and prm.ref
+
+    """
+    ref_ids = set()
+    for trans in transitions:
+        for prm in trans.prm_set.all():
+            exec('trans.%s = prm' % prm.name)
+            ref_ids.add(prm.ref_id)
+    return ref_ids
+
+def get_sources(ref_ids):
+    refs = []
+    for ref_id in ref_ids:
+        try:
+            ref = Ref.objects.get(pk=ref_id)
+        except Ref.DoesNotExist:
+            continue
+        refs.append(ref)
+    return refs
+
+def get_species(transitions):
+    """
+    Return a list of the species with transitions matching the search
+    parameters and attach the relevant states to them.
+
+    """
+
+    nstates = 0
+    species = Iso.objects.filter(pk__in=transitions.values_list('iso')
+                                 .distinct())
+    nspecies = species.count()
+    for iso in species:
+        if iso.molecule.molecID == 36:
+            # XXX for now, hard-code the molecular charge for NO+
+            iso.molecule.charge = 1
+        # all the transitions for this species:
+        sptransitions = transitions.filter(iso=iso)
+        # sids is all the stateIDs involved in these transitions:
+        stateps = sptransitions.values_list('statep', flat=True)
+        statepps = sptransitions.values_list('statepp', flat=True)
+        sids = set(chain(stateps, statepps))
+        # attach the corresponding states to the species:
+        iso.States = State.objects.filter(pk__in = sids)
+        nstates += len(sids)
+    return species, nspecies, nstates
+
+def make_html_files(form, filestem, transitions, sources, species):
     output_files = []
-    transpath = os.path.join(settings.RESULTSPATH, '%s-trans.html' % filestem)
     output_collection = output_collections[form.output_collectionID]
     output_fields = output_collection.output_field.all()
+    get_states = True
+    get_refs = True
+
+    ts = time.time()
+    transpath = os.path.join(settings.RESULTSPATH, '%s-trans.html' % filestem)
     fo = open(transpath, 'w')
     print >>fo, html_preamble()
     print >>fo, '<table>'
@@ -103,42 +180,14 @@ def make_html_files(form, filestem, transitions):
         print >>fo, '<th>%s</th>' % output_field.name_html
     print >>fo, '</tr>'
 
-    prm_names = set()
-    get_qns = False
-    for output_field in output_fields:
-        if len(output_field.name) > 4 and output_field.name[-4:] in (
-                    '.val', '.err', '.ref'):
-            prm_names.add(output_field.name[:-4])
-        elif output_field.name.startswith('q_'):
-            get_qns = True
-
-    get_states = form.get_states
-    if get_states:
-        states = set()
-
-    get_refs = True
-    ref_ids = set()
-    refs = set()
-
     r_on, r_off = 're', 'ro'
+    # pre-resolving the eval_strs massively improves performance
+    eval_strs = [output_field.eval_str for eval_str in output_fields]
     for trans in transitions:
-        for prm in trans.prm_set.all():
-            exec('trans.%s = prm' % prm.name)
-            ref_ids.add(prm.ref_id)
-
-        if get_states:
-            states.add(trans.statep)
-            states.add(trans.statepp)
-
-        # only hit the database for the quantum numbers if we have to
-        if get_qns:
-            qnsp = trans.statep.qns_set
-            qnspp = trans.statepp.qns_set
-            
         print >>fo, '<tr class="%s">' % r_on
-        for output_field in output_fields:
+        for eval_str in eval_strs:
             try:
-                s_val = eval(output_field.eval_str)
+                s_val = eval(eval_str)
             except:
                 s_val = '###'
             if output_field.name == 'par_line':
@@ -152,8 +201,11 @@ def make_html_files(form, filestem, transitions):
     print >>fo, '</table>\n</body>\n</html>'
     fo.close()
     output_files.append(transpath)
+    te = time.time()
+    print 'time to write transitions html = %.1f secs' % (te-ts)
 
     if get_states:
+        ts = time.time()
         statespath = os.path.join(settings.RESULTSPATH,
                         '%s-states.html' % filestem)
         fo = open(statespath, 'w')
@@ -164,28 +216,34 @@ def make_html_files(form, filestem, transitions):
                     '<th><em>E</em></th><th><em>g</em></th><th>[QNs]</th>'
         print >>fo, '</tr>'
         r_on, r_off = 're', 'ro'
-        for state in states:
-            try:
-                s_E = '%10.4f' % state.energy
-            except TypeError:
-                s_E = '###'
-            try:
-                s_g = '%5d' % state.g
-            except TypeError:
-                s_g = '###'
-            s_qns = state.s_qns or '###'
-            print >>fo, '<tr class="%s">' % r_on
-            print >>fo, '<td>%12d</td><td>%2d</td><td>%1d</td><td>%s</td>'\
-                        '<td>%s</td><td>%s</td>' % (state.id,
-                        state.iso.molecule.molecID, state.iso.isoID,
-                        s_E, s_g, s_qns)
-            r_on, r_off = r_off, r_on
+        for iso in species:
+            molecID = iso.molecule.molecID
+            isoID = iso.isoID
+            for state in iso.States:
+                try:
+                    s_E = '%10.4f' % state.energy
+                except TypeError:
+                    s_E = '###'
+                try:
+                    s_g = '%5d' % state.g
+                except TypeError:
+                    s_g = '###'
+                s_qns = state.s_qns or '###'
+                print >>fo, '<tr class="%s">' % r_on
+                print >>fo, '<td>%12d</td><td>%2d</td><td>%1d</td><td>%s</td>'\
+                            '<td>%s</td><td>%s</td>' % (state.id,
+                            molecID, isoID, s_E, s_g, s_qns)
+                print >>fo, '</tr>'
+                r_on, r_off = r_off, r_on
             
         print >>fo, '</table>\n</body>\n</html>'
         fo.close()
         output_files.append(statespath)
+        te = time.time()
+        print 'time to write states html = %.1f secs' % (te-ts)
 
     if get_refs:
+        ts = time.time()
         refspath = os.path.join(settings.RESULTSPATH,
                       '%s-refs.html' % filestem)
         fo = open(refspath, 'w')
@@ -193,21 +251,23 @@ def make_html_files(form, filestem, transitions):
         print >>fo, '<table>'
         print >>fo, '<tr><th>id</th><th>reference</th></tr>'
         r_on, r_off = 're', 'ro'
-        for ref in refs:
-            if ref is None:
+        for source in sources:
+            if source is None:
                 continue
             print >>fo, '<tr class="%s">' % r_on
-            print >>fo, '<td class="ref">%s</td>' % ref.refID
+            print >>fo, '<td class="ref">%s</td>' % source.refID
             print >>fo, '<td>',
-            print >>fo, unicode(ref.cited_as_html).encode('utf-8'),
-            if ref.url:
-                print >>fo, '[<a href="%s">url</a>]' % ref.url
+            print >>fo, unicode(source.cited_as_html).encode('utf-8'),
+            if source.url:
+                print >>fo, '[<a href="%s">url</a>]' % source.url
             print >>fo, '</td>'
             print >>fo, '</tr>'
             r_on, r_off = r_off, r_on
         print >>fo, '</table>'
         fo.close()
         output_files.append(refspath)
+        te = time.time()
+        print 'time to write sources html = %.1f secs' % (te-ts)
 
     return output_files
 
