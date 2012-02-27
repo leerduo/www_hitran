@@ -182,7 +182,7 @@ def make_html_files(form, filestem, transitions, sources, species):
 
     r_on, r_off = 're', 'ro'
     # pre-resolving the eval_strs massively improves performance
-    eval_strs = [output_field.eval_str for eval_str in output_fields]
+    eval_strs = [output_field.eval_str for output_field in output_fields]
     for trans in transitions:
         print >>fo, '<tr class="%s">' % r_on
         for eval_str in eval_strs:

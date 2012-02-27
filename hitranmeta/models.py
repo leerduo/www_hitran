@@ -91,6 +91,8 @@ class Ref(models.Model):
     # a URL to the source, if available
     url = models.TextField(null=True, blank=True)
 
+    source_id = models.IntegerField(null=True, blank=True)
+
     def __unicode__(self):
         return self.refID
 
@@ -151,4 +153,213 @@ class OutputCollection(models.Model):
 
     class Meta:
         app_label='hitranmeta'
+
+
+#########################
+class SourceMethod(models.Model):
+    method_name = models.CharField(max_length=32)
+    def __unicode__(self):
+        return self.method_name
+    class Meta:
+        app_label = 'hitranmeta'
+
+class SourceType(models.Model):
+    source_type = models.CharField(max_length=50)
+    def __unicode__(self):
+        return self.source_type
+    class Meta:
+        app_label = 'hitranmeta'
+
+class Source(models.Model):
+    # unique ID for this reference
+    refID = models.CharField(max_length=100)
+    # reference type (e.g. 'article', 'private communication')
+    source_type = models.ForeignKey('SourceType')
+    # a list of the authors' names in a string as:
+    # 'A.N. Other, B.-C. Person Jr., Ch. Someone-Someone, N.M.L. Haw Haw'
+    authors = models.TextField(null=True, blank=True)
+    # the article, book, or thesis title
+    title = models.TextField(null=True, blank=True)
+    # the title as HTML
+    title_html = models.TextField(null=True, blank=True)
+    # the journal name
+    journal = models.CharField(max_length=500, null=True, blank=True)
+    # the volume (which may be a string)
+    volume = models.CharField(max_length=10, null=True, blank=True)
+    # the first page (which may be a string e.g. 'L123')
+    page_start = models.CharField(max_length=10, null=True, blank=True)
+    # the last page
+    page_end = models.CharField(max_length=10, null=True, blank=True)
+    # the year of publication, creation, or communication
+    year = models.IntegerField(null=True, blank=True)
+    # the institution name, if relevant and available
+    institution = models.CharField(max_length=500, null=True, blank=True)
+    # a note, perhaps containing cross-references of ref_id inside
+    # square brackets
+    note = models.TextField(null=True, blank=True)
+    # the note as HTML
+    note_html = models.TextField(null=True, blank=True)
+    # the Digital Object Identifier, if available
+    doi = models.CharField(max_length=100, null=True, blank=True)
+    # a string of HTML to be output on websites citing this reference
+    cited_as_html = models.TextField()
+    # a URL to the source, if available
+    url = models.TextField(null=True, blank=True)
+    # method: e.g. 'experimental', 'theory', 'extrapolation', 'guess'
+    method = models.ForeignKey('SourceMethod')
+    # article number, used instead of page number for e.g. J. Chem. Phys. papers
+    article_number = models.CharField(max_length=16, null=True, blank=True)
+    # source_list refers to a table giving the one-to-many relationship for a
+    # Source note which cites (possibly more than one) sources
+    source_list = models.ManyToManyField('Source', symmetrical=False,
+                                         null=True, blank=True)
     
+    def __unicode__(self):
+        if self.source_type.source_type == 'article':
+            return '%d: %s: %s, %s' % (self.id, self.refID, self.authors,
+                                       self.title)
+        elif self.source_type.source_type in ('note', 'private communication'):
+            return '%d: %s: %s, %s' % (self.id, self.refID, self.authors,
+                                       self.note)
+        else:
+            return '%d: %s: %s, %s' % (self.id, self.refID, self.authors,
+                                       self.title)
+
+    class Meta:
+        app_label='hitranmeta'
+
+    def html(self):
+        source_type = self.source_type.source_type
+        if source_type == 'article':
+            return self.html_article()
+        if source_type == 'note':
+            return self.html_note_full()
+        if source_type == 'private communication':
+            return self.html_private_communication()
+        if source_type == 'proceedings':
+            return self.html_proceedings()
+        if source_type == 'thesis':
+            return self.html_thesis()
+        if source_type == 'database':
+            return self.html_database()
+        if source_type == 'unpublished data':
+            return self.html_unpublished_data()
+        return 'undefined %s' % source_type
+
+    def html_article(self):
+        s_authors = self.authors
+        if not s_authors:
+            s_authors = 'unknown authors'
+        if self.title_html:
+            s_title = '"%s"' %  self.title_html
+        else:
+            s_title = '[unknown title]'
+        s_journal = self.journal
+        if not s_journal:
+            s_journal = 'unknown journal'
+        if self.volume:
+            s_volume = ' <strong>%s</strong>' % self.volume
+        else:
+            s_volume = ''
+        s_pages = self.page_start
+        if s_pages:
+            if self.page_end:
+                s_pages = ', %s-%s' % (s_pages, self.page_end)
+        else:
+            s_pages = ''
+        s_year = ''
+        if self.year:
+            s_year = ' (%s)' % (str(self.year))
+
+        s = '%s, %s, <em>%s</em>%s%s%s'\
+                % (s_authors, s_title, s_journal, s_volume,
+                   s_pages, s_year)
+        return s
+
+    def html_note(self):
+        s_note = self.note_html
+        return 'NOTE: %s' % s_note
+        
+    def html_note_full(self):
+        s_note = self.note_html
+        s_sublist = []
+        for source in self.source_list.all():
+            s_sublist.append('<li>%d. %s</li>' % (source.id, source.html()))
+        s = '%s\n<ul>\n%s</ul>' % (s_note, '\n'.join(s_sublist))
+        return s
+
+    def html_private_communication(self):
+        s_authors = self.authors
+        if not s_authors:
+            s_authors = 'unknown authors'
+        s_note = ''
+        if self.note_html:
+            s_note = ', %s' % self.note_html
+        s_year = ''
+        if self.year:
+            s_year = ' (%d)' % self.year
+        s = '%s%s, private communication%s' % (s_authors, s_note, s_year)
+        return s
+        
+    def html_proceedings(self):
+        s_authors = self.authors
+        if not s_authors:
+            s_authors = 'unknown authors'
+        s_title = ''
+        if self.title_html:
+            s_title = ', "%s"' % self.title_html
+        # for proceedings, the event details (e.g. conference venue and dates)
+        # are stored in note and note_html
+        s_event = ''
+        if self.note_html:
+            s_event = ', %s' % self.note_html
+        s = '%s%s%s' % (s_authors, s_title, s_event)
+        return s
+
+    def html_thesis(self):
+        s_authors = self.authors
+        if not s_authors:
+            s_authors = 'unknown authors'
+        s_title = ''
+        if self.title_html:
+            s_title = ', "%s"' % self.title_html
+        s_note = ''
+        if self.note_html:
+            s_note = ', %s' % self.note_html
+        s_institution = self.institution
+        if not s_institution:
+            s_institution = '[unknown institution]'
+        s_year = ''
+        if self.year:
+            s_year = ' (%d)' % self.year
+        s = '%s%s%s, %s%s' % (s_authors, s_title, s_note, s_institution, s_year)
+        return s
+
+    def html_database(self):
+        s_authors = self.authors
+        if not s_authors:
+            s_authors = 'unknown authors'
+        s_title = ''
+        if self.title_html:
+            s_title = ', "%s"' % self.title_html
+        s_note = ''
+        if self.note_html:
+            s_note = ', %s' % self.note_html
+        s = '%s%s%s, database' % (s_authors, s_title, s_note)
+        return s
+
+    def html_unpublished_data(self):
+        s_authors = self.authors
+        if not s_authors:
+            s_authors = 'unknown authors'
+        s_title = ''
+        if self.title_html:
+            s_title = ', "%s"' % self.title_html
+        s_note = ''
+        if self.note_html:
+            s_note = ', %s' % self.note_html
+        s_year = ''
+        if self.year:
+            s_year = ' (%d)' % self.year
+        s = '%s%s%s, unpublished data%s' % (s_authors, s_title, s_note, s_year)
+        return s

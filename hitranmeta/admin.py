@@ -1,8 +1,8 @@
 from django.contrib import admin
-from HITRAN.hitranmeta.models import Ref, OutputField, OutputCollection
+from HITRAN.hitranmeta.models import Ref, OutputField, OutputCollection, Source
 
 class RefAdmin(admin.ModelAdmin):
-    ordering = ['refID']
+    ordering = ['id','refID']
     pass
 admin.site.register(Ref, RefAdmin)
 
@@ -14,5 +14,12 @@ class OutputCollectionAdmin(admin.ModelAdmin):
     pass
 admin.site.register(OutputCollection, OutputCollectionAdmin)
 
+##################
+
+class SourceAdmin(admin.ModelAdmin):
+    list_display = ('id', '__unicode__')
+    ordering = ['id',]
+    pass
+admin.site.register(Source, SourceAdmin)
 
 

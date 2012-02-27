@@ -69,9 +69,9 @@ def do_search(form):
     xscs = Xsc.objects.filter(query)
 
     # integer timestamp: the number of seconds since 00:00 1 January 1970
-    #ts_int = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+    ts_int = int(time.mktime(datetime.datetime.utcnow().timetuple()))
     # XXX temporary: use a fixed, constant filestem:
-    ts_int=1285072599
+    #ts_int=1285072599
     # make the timestamp from the hex representation of ts_int, stripping
     # off the initial '0x' characters:
     filestem = hex(ts_int)[2:]
@@ -92,14 +92,16 @@ def do_search(form):
         sources = Ref.objects.filter(pk__in=sourceIDs)
 
         # write the XSAMS file
-        fo = open('results/%s' % xsams_name, 'w')
+        xsams_path = os.path.join(settings.RESULTSPATH, xsams_name)
+        fo = open(xsams_path, 'w')
         for xsams_chunk in make_xsams(xscs, molecules, sources, output_files):
             print >>fo, xsams_chunk.encode('utf-8')
         fo.close()
 
     # zip up all the files in a tgz compressed archive
     tgz_name = '%s.tgz' % filestem
-    tar = tarfile.open('results/%s' % tgz_name, 'w:gz')
+    tgz_path = os.path.join(settings.RESULTSPATH, tgz_name)
+    tar = tarfile.open(tgz_path, 'w:gz')
     for output_file in output_files:
         filepath = output_file['filename']
         if not filepath.endswith('.xsams'):
@@ -117,7 +119,7 @@ def molecule_xml(molecules):
         return
     yield '<Molecules>'
     for molecule in molecules:
-        yield '<Molecule speciesID="XHIT-%s">' % molecule.InChIKey
+        yield '<Molecule speciesID="XHSHD-%s">' % molecule.InChIKey
         yield '    <MolecularChemicalSpecies>'
         yield '    <OrdinaryStructuralFormula>'
         yield '        <Value>%s</Value>' % molecule.ordinary_formula
@@ -147,7 +149,7 @@ def source_xml(sources):
         return
     yield '<Sources>'
     for source in sources:
-        yield '<Source sourceID="BHIT-%s">' % source.refID
+        yield '<Source sourceID="BHSHD-%s">' % source.refID
         ref_type = source.ref_type
         if ref_type == 'article': ref_type = 'journal'
         if ref_type == 'note':
@@ -183,7 +185,7 @@ def make_xsams(xscs, molecules, sources, output_files):
 
     yield '<Environments>'
     for xsc in xscs:
-        yield '    <Environment envID="EHIT-%d">' % xsc.id
+        yield '    <Environment envID="EHSHD-%d">' % xsc.id
         yield '        <Temperature><Value units="K">%.1f</Value>'\
                       '</Temperature>' % xsc.T
         if xsc.broadener:
@@ -207,15 +209,15 @@ def make_xsams(xscs, molecules, sources, output_files):
     yield '<Processes>'
     yield '<Radiative>'
     for i, xsc in enumerate(xscs):
-        yield '<AbsorptionCrossSection envRef="EHIT-%d"'\
-              ' id="PHIT-XSC-%d">' % (xsc.id, i)
+        yield '<AbsorptionCrossSection envRef="EHSHD-%d"'\
+              ' id="PHSHD-XSC-%d">' % (xsc.id, i)
         yield '    <Description>The absorption cross'\
               ' section for %s at %.1f K, %.1f Torr</Description>'\
                     % (xsc.molecule.ordinary_formula, xsc.T, xsc.p)
         yield '    <X parameter="nu" units="1/cm">'
         dnu = (xsc.numax - xsc.numin) / (xsc.n - 1)
-        yield '        <LinearSequence n="%d" a0="%f"'\
-                    ' a1="%f"/>' % (xsc.n, xsc.numin, dnu)
+        yield '        <LinearSequence count="%d" initial="%f"'\
+                    ' increment="%f"/>' % (xsc.n, xsc.numin, dnu)
         yield '    </X>'
         yield '    <Y parameter="sigma" units="cm2">'
         sigma_name = xsc.filename
@@ -225,7 +227,7 @@ def make_xsams(xscs, molecules, sources, output_files):
         yield '    <DataFile>%s</DataFile>' % sigma_name
         yield '    </Y>'
         yield '    <Species>'
-        yield '    <SpeciesRef>XHIT-%s</SpeciesRef>' % xsc.molecule.InChIKey
+        yield '    <SpeciesRef>XHSHD-%s</SpeciesRef>' % xsc.molecule.InChIKey
         yield '    </Species>'
         yield '</AbsorptionCrossSection>' 
     yield '</Radiative>'

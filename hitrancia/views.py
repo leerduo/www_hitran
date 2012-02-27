@@ -62,9 +62,9 @@ def do_search(form):
     cias = CIA.objects.filter(query)
     
     # integer timestamp: the number of seconds since 00:00 1 January 1970
-    #ts_int = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+    ts_int = int(time.mktime(datetime.datetime.utcnow().timetuple()))
     # XXX temporary: use a fixed, constant filestem:
-    ts_int=1285072598
+    #ts_int=1285072598
     # make the timestamp from the hex representation of ts_int, stripping
     # off the initial '0x' characters:
     filestem = hex(ts_int)[2:]
@@ -86,14 +86,16 @@ def do_search(form):
         sources = Ref.objects.filter(pk__in=sourceIDs)
 
         # write the XSAMS file
-        fo = open('results/%s' % xsams_name, 'w')
+        xsams_path = os.path.join(settings.RESULTSPATH, xsams_name)
+        fo = open(xsams_path, 'w')
         for xsams_chunk in make_xsams(cias, species, sources, output_files):
             print >>fo, xsams_chunk.encode('utf-8')
         fo.close()
 
     # zip up all the files in a tgz compressed archive
     tgz_name = '%s.tgz' % filestem
-    tar = tarfile.open('results/%s' % tgz_name, 'w:gz')
+    tgz_path = os.path.join(settings.RESULTSPATH, tgz_name)
+    tar = tarfile.open(tgz_path, 'w:gz')
     for output_file in output_files:
         filepath = output_file['filename']
         if not filepath.endswith('.xsams'):
@@ -120,7 +122,7 @@ def atom_xml(atoms):
         yield '        <Isotope>'
         yield '            <IsotopeParameters><MassNumber>%d</MassNumber>'\
               '</IsotopeParameters>' % atom.mass_number
-        yield '            <Ion speciesID="XHIT-%s"><IonCharge>0</IonCharge>'\
+        yield '            <Ion speciesID="XHSHD-%s"><IonCharge>0</IonCharge>'\
               '<InChI>%s</InChI><InChIKey>%s</InChIKey></Ion>' % (atom.InChIKey,
                         atom.InChI, atom.InChIKey)
         yield '        </Isotope>\n    </Atom>'
@@ -131,7 +133,7 @@ def molecule_xml(molecules):
         return
     yield '<Molecules>'
     for molecule in molecules:
-        yield '<Molecule speciesID="XHIT-%s">' % molecule.InChIKey
+        yield '<Molecule speciesID="XHSHD-%s">' % molecule.InChIKey
         yield '    <MolecularChemicalSpecies>'
         yield '    <OrdinaryStructuralFormula>'
         yield '        <Value>%s</Value>' % molecule.ordinary_formula
@@ -157,7 +159,7 @@ def source_xml(sources):
         return
     yield '<Sources>'
     for source in sources:
-        yield '<Source sourceID="BHIT-%s">' % source.refID
+        yield '<Source sourceID="BHSHD-%s">' % source.refID
         ref_type = source.ref_type
         if ref_type == 'article': ref_type = 'journal'
         yield '<Category>%s</Category>' % ref_type
@@ -188,7 +190,7 @@ def make_xsams(cias, species, sources, output_files):
 
     yield '<Environments>'
     for cia in cias:
-        yield '    <Environment envID="EHIT-%d"><Temperature>'\
+        yield '    <Environment envID="EHSHD-%d"><Temperature>'\
               '<Value units="K">%.1f</Value></Temperature></Environment>'\
                     % (cia.id, cia.T)
     yield '</Environments>'
@@ -221,8 +223,8 @@ def make_xsams(cias, species, sources, output_files):
     yield '<Processes>'
     yield '<Radiative>'
     for i, cia in enumerate(cias):
-        yield '<CollisionInducedAbsorptionCrossSection envRef="EHIT-%d"'\
-              ' id="PHIT-CIA-%d">' % (cia.id, i)
+        yield '<CollisionInducedAbsorptionCrossSection envRef="EHSHD-%d"'\
+              ' id="PHSHD-CIA-%d">' % (cia.id, i)
         yield '    <Description>The collision-induced absorption cross'\
               ' section for %s-%s at %.1f K</Description>'\
                     % (cia.molecule1.ordinary_formula,
@@ -230,8 +232,8 @@ def make_xsams(cias, species, sources, output_files):
                        cia.T)
         yield '    <X parameter="nu" units="1/cm">'
         if cia.dnu:
-            yield '        <LinearSequence n="%d" a0="%f"'\
-                        ' a1="%f"/>' % (cia.n, cia.numin, cia.dnu)
+            yield '        <LinearSequence count="%d" initial="%f"'\
+                        ' increment="%f"/>' % (cia.n, cia.numin, cia.dnu)
         else:
             nu_name = cia.filename; nu_name = nu_name.replace('.cia', '.nu')
             output_files.append({'filename': nu_name,
@@ -255,9 +257,9 @@ def make_xsams(cias, species, sources, output_files):
         elif cia.error:
             yield '    <Error>%e</Error>' % cia.error
         yield '    </Y>'
-        yield '    <SpeciesRef>XHIT-%s</SpeciesRef>'\
+        yield '    <SpeciesRef>XHSHD-%s</SpeciesRef>'\
                         % cia.molecule1.InChIKey
-        yield '    <SpeciesRef>XHIT-%s</SpeciesRef>'\
+        yield '    <SpeciesRef>XHSHD-%s</SpeciesRef>'\
                         % cia.molecule2.InChIKey
         yield '</CollisionInducedAbsorptionCrossSection>' 
     yield '</Radiative>'

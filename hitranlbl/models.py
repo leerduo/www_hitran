@@ -50,6 +50,7 @@ class Prm(models.Model):
     val = models.FloatField()
     err = models.FloatField(blank=True, null=True)
     ref = models.ForeignKey('hitranmeta.ref', blank=True, null=True)
+    source = models.ForeignKey('hitranmeta.source', blank=True, null=True)
     method = models.IntegerField(blank=True, null=True)
     
     class Meta:
