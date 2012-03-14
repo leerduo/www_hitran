@@ -10,6 +10,8 @@ hitran_path = os.path.join(HOME, 'research/VAMDC/HITRAN/django/HITRAN')
 sys.path.append(hitran_path)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
+from models import Molecule, Iso
+from hitranlbl.models import Trans, Prm
 from models import Ref, Source, SourceType, SourceMethod
 
 def source_to_html(source):
@@ -21,11 +23,23 @@ def source_to_html(source):
     return 'uncoded'
 
 
-print '<html><head><meta charset="utf-8"/></head><body>'
-sources = Source.objects.all()
+print '<html><head>'
+print '<link rel="stylesheet" href="sources.css" type="text/css" media="screen"/>'
+print '<meta charset="utf-8"/>'
+print '</head><body>'
+#sources = Source.objects.all()
+#sources = Source.objects.filter(refID__startswith="NOp-nu")
+molecule = Molecule.objects.filter(ordinary_formula="NO+").get()
+isotopologues = Iso.objects.filter(molecule=molecule)
+transitions = Trans.objects.filter(iso__in=isotopologues)
+prms = Prm.objects.filter(trans__in=transitions).select_related('source')
+sources = set([prm.source for prm in prms])
 print '<ol>'
 for source in sources:
-    print '<li>%s</li>' % unicode(source.html()).encode('utf-8')
+    if source is None:
+        continue
+    #print '<li>%s</li>' % unicode(source.html(sublist=True)).encode('utf-8')
+    print '<li>%s: %s</li>' % (unicode(source.refID).encode('utf-8'), unicode(source.html(sublist=True)).encode('utf-8'))
 print '</ol>'
 
 print '</body></html>'

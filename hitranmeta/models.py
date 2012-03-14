@@ -1,5 +1,8 @@
 from django.db import models
+import re
 import datetime
+
+ref_patt = 'Ref\.\s\[(\d+)\]'
 
 class Molecule(models.Model):
     molecID = models.IntegerField(primary_key=True, unique=True)
@@ -228,23 +231,31 @@ class Source(models.Model):
     class Meta:
         app_label='hitranmeta'
 
-    def html(self):
+    def html(self, sublist=False, s_refid=None):
+        if s_refid is None:
+            s_refid = str(self.id)
         source_type = self.source_type.source_type
         if source_type == 'article':
-            return self.html_article()
+            return '%s. %s' % (s_refid, self.html_article())
         if source_type == 'note':
-            return self.html_note_full()
+            return '%s. %s' % (s_refid, self.html_note(sublist))
         if source_type == 'private communication':
-            return self.html_private_communication()
+            return '%s. %s' % (s_refid, self.html_private_communication())
         if source_type == 'proceedings':
-            return self.html_proceedings()
+            return '%s. %s' % (s_refid, self.html_proceedings())
         if source_type == 'thesis':
-            return self.html_thesis()
+            return '%s. %s' % (s_refid, self.html_thesis())
         if source_type == 'database':
-            return self.html_database()
+            return '%s. %s' % (s_refid, self.html_database())
         if source_type == 'unpublished data':
-            return self.html_unpublished_data()
-        return 'undefined %s' % source_type
+            return '%s. %s' % (s_refid, self.html_unpublished_data())
+        if source_type == 'report':
+            return '%s. %s' % (s_refid, self.html_report())
+        if source_type == 'in preparation':
+            return '%s. %s' % (s_refid, self.html_in_preparation())
+        if source_type == 'book':
+            return '%s. %s' % (s_refid, self.html_book())
+        return '%s. undefined %s' % (s_refid, source_type)
 
     def html_article(self):
         s_authors = self.authors
@@ -271,20 +282,39 @@ class Source(models.Model):
         if self.year:
             s_year = ' (%s)' % (str(self.year))
 
-        s = '%s, %s, <em>%s</em>%s%s%s'\
+        s = '%s, %s, <em>%s</em>%s%s%s.'\
                 % (s_authors, s_title, s_journal, s_volume,
                    s_pages, s_year)
         return s
 
-    def html_note(self):
-        s_note = self.note_html
-        return 'NOTE: %s' % s_note
-        
-    def html_note_full(self):
-        s_note = self.note_html
+    def html_note(self, sublist, relabel=True):
+        if not sublist:
+            return '%s.' % self.note_html
+        s_note = '%s.' % self.note_html
+        if relabel:
+            #s_refids = list(set(re.findall(ref_patt, self.note)))
+            s_allrefids = re.findall(ref_patt, self.note)
+            # remove duplicates from s_allrefids, whilst preserving order
+            seen = set(); seen_add = seen.add
+            s_refids = [x for x in s_allrefids if x not in seen
+                                                    and not seen_add(x)]
+            for i,s_refid in enumerate(s_refids):
+                s_note = s_note.replace('Ref. [%s]' % s_refid, 'Ref. [%d%s]'
+                                            % (self.id, chr(i+97)))
         s_sublist = []
-        for source in self.source_list.all():
-            s_sublist.append('<li>%d. %s</li>' % (source.id, source.html()))
+        if relabel:
+            for s_refid in s_refids:
+                source = self.source_list.get(pk=int(s_refid))
+                s_refid = '%d%s' % (self.id,
+                                  chr(s_refids.index(str(source.id))+97))
+                s_sublist.append('<li>%s</li>' % source.html(sublist=False,
+                                                             s_refid=s_refid))
+        else:
+            for source in self.source_list.all():
+                s_refid = str(source.id)
+                # NB we don't want the sublist entries to have sublists!
+                s_sublist.append('<li>%s</li>' % source.html(sublist=False,
+                                                             s_refid=s_refid))
         s = '%s\n<ul>\n%s</ul>' % (s_note, '\n'.join(s_sublist))
         return s
 
@@ -298,7 +328,12 @@ class Source(models.Model):
         s_year = ''
         if self.year:
             s_year = ' (%d)' % self.year
-        s = '%s%s, private communication%s' % (s_authors, s_note, s_year)
+        s_pc = '%s%s, private communication%s.' % (s_authors, s_note, s_year)
+        s_sublist = []
+        for source in self.source_list.all():
+            # we don't want the sublist entries to have sublists!
+            s_sublist.append('<li>%s</li>' % source.html(sublist=False))
+        s = '%s\n<ul>\n%s</ul>' % (s_pc, '\n'.join(s_sublist))
         return s
         
     def html_proceedings(self):
@@ -313,7 +348,7 @@ class Source(models.Model):
         s_event = ''
         if self.note_html:
             s_event = ', %s' % self.note_html
-        s = '%s%s%s' % (s_authors, s_title, s_event)
+        s = '%s%s%s.' % (s_authors, s_title, s_event)
         return s
 
     def html_thesis(self):
@@ -332,7 +367,8 @@ class Source(models.Model):
         s_year = ''
         if self.year:
             s_year = ' (%d)' % self.year
-        s = '%s%s%s, %s%s' % (s_authors, s_title, s_note, s_institution, s_year)
+        s = '%s%s%s, thesis, %s%s.' % (s_authors, s_title, s_note,
+                                       s_institution, s_year)
         return s
 
     def html_database(self):
@@ -345,7 +381,7 @@ class Source(models.Model):
         s_note = ''
         if self.note_html:
             s_note = ', %s' % self.note_html
-        s = '%s%s%s, database' % (s_authors, s_title, s_note)
+        s = '%s%s%s, database.' % (s_authors, s_title, s_note)
         return s
 
     def html_unpublished_data(self):
@@ -361,5 +397,60 @@ class Source(models.Model):
         s_year = ''
         if self.year:
             s_year = ' (%d)' % self.year
-        s = '%s%s%s, unpublished data%s' % (s_authors, s_title, s_note, s_year)
+        s = '%s%s%s, unpublished data%s.' % (s_authors, s_title, s_note,
+                                             s_year)
+        return s
+
+    def html_report(self):
+        s_authors = self.authors
+        if not s_authors:
+            s_authors = 'unknown authors'
+        s_title = ''
+        if self.title_html:
+            s_title = ', "%s"' % self.title_html
+        s_note = ''
+        if self.note_html:
+            s_note = ', %s' % self.note_html
+        s_institution = ''
+        if self.institution:
+            s_institution = ', %s' % self.institution
+        s_year = ''
+        if self.year:
+            s_year = ' (%d)' % self.year
+        s = '%s%s%s%s%s.' % (s_authors, s_title, s_note, s_institution, s_year)
+        return s
+
+    def html_in_preparation(self):
+        s_authors = self.authors
+        if not s_authors:
+            s_authors = 'unknown authors'
+        s_title = ''
+        if self.title_html:
+            s_title = ', "%s"' % self.title_html
+        s_note = ''
+        if self.note_html:
+            s_note = ', %s' % self.note_html
+        s_year = ''
+        if self.year:
+            s_year = ' (%d)' % self.year
+        s = '%s%s%s%s, in preparation.' % (s_authors, s_title, s_note, s_year)
+        return s
+
+    def html_book(self):
+        s_authors = self.authors
+        if not s_authors:
+            s_authors = 'unknown authors'
+        s_title = ''
+        if self.title_html:
+            s_title = ', "%s"' % self.title_html
+        s_note = ''
+        if self.note_html:
+            s_note = ', %s' % self.note_html
+        s_institution = ''
+        if self.institution:
+            s_institution = ', %s' % self.institution
+        s_year = ''
+        if self.year:
+            s_year = ' (%d)' % self.year
+        s = '%s%s%s%s%s.' % (s_authors, s_title, s_note, s_institution, s_year)
         return s
