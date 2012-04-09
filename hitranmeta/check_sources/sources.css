@@ -1,0 +1,24 @@
+body {
+	color: #000;
+	background: #fff;
+	padding: 0; margin: 0;
+	text-align: justify;
+    width: 800px;
+}
+
+ol {
+    list-style: none;
+    text-indent: -2em;
+}
+ul {
+    list-style: none;
+    text-indent: -2em;
+}
+li {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    line-height: 1.5em;
+}
+
+sub, sup { line-height: 0; } 
+

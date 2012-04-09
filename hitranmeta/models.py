@@ -3,6 +3,16 @@ import re
 import datetime
 
 ref_patt = 'Ref\.\s\[(\d+)\]'
+def i2chr(i):
+    """
+    Map i=(0,1,2,...,25) to 'a','b','c',...,'z';
+    return '?' if 0>i or i>25
+
+    """
+    if i<0 or i>25:
+        return '?'
+    return chr(i+97)
+
 
 class Molecule(models.Model):
     molecID = models.IntegerField(primary_key=True, unique=True)
@@ -49,12 +59,26 @@ class Iso(models.Model):
     # not maximum abundance, apart from Br) isotopeNumbers specified:
     cml = models.TextField(null=True, blank=True)
     case = models.ForeignKey('Case', null=True, blank=True)
+    def __unicode__(self):
+        return self.iso_name
+
+    class Meta:
+        app_label='hitranmeta'
+
+class NucSpins(models.Model):
+    iso = models.ForeignKey('Iso')
+    atom_label = models.CharField(max_length=3)
+    I = models.FloatField()
+    def __unicode__(self):
+        return u'%s: I(%s)=%.1f' % (self.iso.iso_name, self.atom_label, self.I)
+
     class Meta:
         app_label='hitranmeta'
 
 class Case(models.Model):
     case_prefix = models.CharField(max_length=10, unique=True)
     case_description = models.CharField(max_length=50)
+
     class Meta:
         app_label='hitranmeta'
 
@@ -289,24 +313,29 @@ class Source(models.Model):
 
     def html_note(self, sublist, relabel=True):
         if not sublist:
+            # no additional sources relate to this note: just output its html
             return '%s.' % self.note_html
+
         s_note = '%s.' % self.note_html
         if relabel:
-            #s_refids = list(set(re.findall(ref_patt, self.note)))
-            s_allrefids = re.findall(ref_patt, self.note)
+            # find all the strings 'Ref. [xxx]' in the note html
+            s_allrefids = re.findall(ref_patt, self.note_html)
             # remove duplicates from s_allrefids, whilst preserving order
             seen = set(); seen_add = seen.add
             s_refids = [x for x in s_allrefids if x not in seen
                                                     and not seen_add(x)]
+            # now replace the database id of each source reference with
+            # a local id, formed as '<id>a', '<id>b', etc. where <id> is
+            # the database id of this note
             for i,s_refid in enumerate(s_refids):
-                s_note = s_note.replace('Ref. [%s]' % s_refid, 'Ref. [%d%s]'
-                                            % (self.id, chr(i+97)))
+                s_note = s_note.replace('Ref. [%s]' % s_refid,
+                                    'Ref. [%d%s]' % (self.id, i2chr(i)))
         s_sublist = []
         if relabel:
             for s_refid in s_refids:
                 source = self.source_list.get(pk=int(s_refid))
                 s_refid = '%d%s' % (self.id,
-                                  chr(s_refids.index(str(source.id))+97))
+                                  i2chr(s_refids.index(str(source.id))))
                 s_sublist.append('<li>%s</li>' % source.html(sublist=False,
                                                              s_refid=s_refid))
         else:
@@ -322,13 +351,17 @@ class Source(models.Model):
         s_authors = self.authors
         if not s_authors:
             s_authors = 'unknown authors'
+        s_institution = ''
+        if self.institution:
+            s_institution = ', %s' % self.institution
         s_note = ''
         if self.note_html:
             s_note = ', %s' % self.note_html
         s_year = ''
         if self.year:
             s_year = ' (%d)' % self.year
-        s_pc = '%s%s, private communication%s.' % (s_authors, s_note, s_year)
+        s_pc = '%s%s%s, private communication%s.' % (s_authors,
+                                        s_institution, s_note, s_year)
         s_sublist = []
         for source in self.source_list.all():
             # we don't want the sublist entries to have sublists!
@@ -381,7 +414,10 @@ class Source(models.Model):
         s_note = ''
         if self.note_html:
             s_note = ', %s' % self.note_html
-        s = '%s%s%s, database.' % (s_authors, s_title, s_note)
+        s_url = ''
+        if self.url:
+            s_url = '<br/>url: <a href="%s">%s</a>' % (self.url, self.url)
+        s = '%s%s%s, database.%s' % (s_authors, s_title, s_note, s_url)
         return s
 
     def html_unpublished_data(self):

@@ -56,8 +56,8 @@ def do_search(form):
         query = query & Q(nu__lte=form.numax)
     if form.Swmin:
         query = query & Q(Sw__gte=form.Swmin)
-    query = query & Q(valid_from__lte=form.datestamp)
-    query = query & Q(valid_to__gte=form.datestamp)
+    #query = query & Q(valid_from__lte=form.datestamp)
+    #query = query & Q(valid_to__gte=form.datestamp)
 
     transitions = Trans.objects.filter(query).select_related().order_by('nu')
     ntrans = transitions.count()
@@ -70,6 +70,8 @@ def do_search(form):
         ntrans = settings.TRANSLIM
     else:
         print 'Results not truncated'
+    te = time.time()
+    print 'time to get transitions = %.1f secs' % (te-start_time)
 
     if settings.TIMED_FILENAMES:
         # integer timestamp: the number of seconds since 00:00 1 January 1970
@@ -84,7 +86,8 @@ def do_search(form):
     # attach the parameters to the transitions, returning their set of
     # reference IDs
     ts = time.time()
-    ref_ids = attach_prms(transitions)
+    #ref_ids = attach_prms(transitions)
+    ref_ids = set()
     te = time.time()
     print 'time to attach parameters = %.1f secs' % (te-ts)
 

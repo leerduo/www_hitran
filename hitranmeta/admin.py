@@ -1,5 +1,6 @@
 from django.contrib import admin
-from HITRAN.hitranmeta.models import Ref, OutputField, OutputCollection, Source
+from HITRAN.hitranmeta.models import Ref, OutputField, OutputCollection,\
+                                     Source, NucSpins
 
 class RefAdmin(admin.ModelAdmin):
     ordering = ['id','refID']
@@ -21,5 +22,10 @@ class SourceAdmin(admin.ModelAdmin):
     ordering = ['id',]
     pass
 admin.site.register(Source, SourceAdmin)
+
+class NucSpinsAdmin(admin.ModelAdmin):
+    pass
+admin.site.register(NucSpins, NucSpinsAdmin)
+    
 
 
