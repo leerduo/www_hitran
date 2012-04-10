@@ -16,7 +16,7 @@ h1 {
 	margin: 10px auto 10px auto;
 	padding: 0 10px 10px 10px;
 	border: black 1px solid;
-	background: #eee;
+	background: #ccf;
 }
 
 #lblsearch_left_panel {
@@ -32,7 +32,7 @@ h1 {
 
 #output_fields {
     font-family: Courier;
-    background: #fff;
+    background: #fcf;
 	border: black 1px solid;
 }
 
