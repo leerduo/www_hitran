@@ -59,13 +59,13 @@ class LblSearchForm:
             if self.Swmin < 0.:
                 # negative Swmin is silly but OK
                 self.Swmin = None
-            self.output_collectionID = int(
+            self.output_collection_index = int(
                     post_data.get('output_collection'))
             self.datestamp = datetime.strptime(post_data.get('date'),
                     '%Y-%m-%d').date()
-            self.get_states = False
-            if post_data.get('get_states'):
-                self.get_states = True
+            #self.get_states = False
+            #if post_data.get('get_states'):
+            #    self.get_states = True
         except ValueError:
             return
         if self.numin is not None and self.numax is not None and\

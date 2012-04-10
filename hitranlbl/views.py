@@ -43,11 +43,27 @@ def do_search(form):
 
     """
 
+    print 'form.output_collection_index = ',form.output_collection_index
+    output_collection = output_collections[form.output_collection_index]
+    print 'output_collection =',output_collection.name 
+
+    if output_collection.name == 'HITRAN2004+':
+        return do_search_par(form)
+    print 'unknown collection!'
+    return None
+
+def do_search_par(form):
+    """
+    Do the search as a raw SQL query, returning the native HITRAN2004+ 160-
+    byte format.
+
+    """
+
     start_time = time.time()
 
     search_summary = {'summary_html':
                 '<p>Here are the results of the query in native'\
-                ' 160-byte HITRAN format</p>'}
+                ' 160-byte HITRAN2004+ format</p>'}
     # just the isotopologue ids
     iso_ids = Iso.objects.filter(molecule__molecID__in=form.selected_molecIDs)\
                                  .values_list('id', flat=True)
@@ -56,13 +72,17 @@ def do_search(form):
     iso_ids_list = ','.join(str(int(id)) for id in iso_ids)
     q_numin = ''
     if form.numin:
-        q_numin = 'AND nu>=%f' % form.numin
+        q_numin = ' AND nu>=%f' % form.numin
     q_numax = ''
     if form.numax:
-        q_numax = 'AND nu<=%f' % form.numax
+        q_numax = ' AND nu<=%f' % form.numax
+    q_Swmin = ''
+    if form.Swmin:
+        q_Swmin = ' AND Sw>=%e' % form.Swmin
 
-    query = 'SELECT id, par_line FROM hitranlbl_trans WHERE iso_id'\
-            ' IN (%s)%s%s' % (iso_ids_list, q_numin, q_numax)
+    query = 'SELECT par_line FROM hitranlbl_trans WHERE iso_id'\
+            ' IN (%s)%s%s%s' % (iso_ids_list, q_numin, q_numax, q_Swmin)
+    #print query
 
     # here's where we do the rawest of the raw SQL query
     from django.db import connection, transaction
@@ -102,8 +122,10 @@ def do_search(form):
 def write_par(filestem, par_lines):
     parpath = os.path.join(settings.RESULTSPATH, '%s-trans.txt' % filestem)
     fo = open(parpath, 'w')
+    # the rows from the SQL query come back as tuples with the single
+    # element par_line, so we need an index here
     for par_line in par_lines:
-        print >>fo, par_line
+        print >>fo, par_line[0]
     fo.close()
     return [parpath,]
     
