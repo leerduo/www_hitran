@@ -45,29 +45,34 @@ def do_search(form):
 
     start_time = time.time()
 
-    search_summary = {'summary_html': '<p>Success!</p>'}
-    isos = Iso.objects.filter(molecule__molecID__in=form.selected_molecIDs)
-    # TODO detect when all isotopologues have been selected and ditch this
-    # filter in that case:
-    query = Q(iso__in=isos)
+    search_summary = {'summary_html':
+                '<p>Here are the results of the query in native'\
+                ' 160-byte HITRAN format</p>'}
+    # just the isotopologue ids
+    iso_ids = Iso.objects.filter(molecule__molecID__in=form.selected_molecIDs)\
+                                 .values_list('id', flat=True)
+
+    # NB protect against SQL injection when constructing the query
+    iso_ids_list = ','.join(str(int(id)) for id in iso_ids)
+    q_numin = ''
     if form.numin:
-        query = query & Q(nu__gte=form.numin)
+        q_numin = 'AND nu>=%f' % form.numin
+    q_numax = ''
     if form.numax:
-        query = query & Q(nu__lte=form.numax)
-    if form.Swmin:
-        query = query & Q(Sw__gte=form.Swmin)
-    #query = query & Q(valid_from__lte=form.datestamp)
-    #query = query & Q(valid_to__gte=form.datestamp)
+        q_numax = 'AND nu<=%f' % form.numax
 
-    print 'query =',query
+    query = 'SELECT id, par_line FROM hitranlbl_trans WHERE iso_id'\
+            ' IN (%s)%s%s' % (iso_ids_list, q_numin, q_numax)
 
-    #transitions = Trans.objects.filter(query).select_related().order_by('nu')
-    #transitions = Trans.objects.filter(query).select_related('hitranlbl_prm')
-    #ntrans = transitions.count()
-    par_lines = Trans.objects.filter(query).values_list('par_line', flat=True)
+    # here's where we do the rawest of the raw SQL query
+    from django.db import connection, transaction
+    cursor = connection.cursor()
+    cursor.execute(query)
+    par_lines = cursor.fetchall()
+
     ntrans = len(par_lines)
     te = time.time()
-    print 'time to get transitions = %.1f secs' % (te-start_time)
+    print 'time to get transitions = %.1f secs' % (te - start_time)
 
     if settings.TIMED_FILENAMES:
         # integer timestamp: the number of seconds since 00:00 1 January 1970
@@ -79,20 +84,17 @@ def do_search(form):
     # off the initial '0x' characters:
     filestem = hex(ts_int)[2:]
 
-    
-
+    ts = time.time()
     output_files = write_par(filestem, par_lines)
-
-
+    te = time.time()
+    print 'time to write transitions = %.1f secs' % (te - ts)
 
     # strip path from output filenames:
     output_files = [os.path.basename(x) for x in output_files]
 
     end_time = time.time()
         
-    #search_summary['ntrans'] = len(transitions)
-    search_summary['ntrans'] = len(par_lines)
-    #search_summary['percent_returned'] = '%.1f' % percent_returned
+    search_summary['ntrans'] = ntrans
     search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
 
     return output_files, search_summary

@@ -16,7 +16,7 @@
 <div id="content">
 
 {{ search_summary.summary_html|safe }}
-<p>{{ search_summary.ntrans }} transitions (truncated at {{ search_summary.percent_returned }}%) returned in {{ search_summary.timed_at }}.<p>
+<p>{{ search_summary.ntrans }} transitions returned in {{ search_summary.timed_at }}.<p>
 <p>The output files are:</p>
 <ul>
 {% for filename in output_files %}
