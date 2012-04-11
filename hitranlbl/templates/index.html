@@ -101,12 +101,50 @@ function change_units()
     oNuMaxUnits.innerHTML = units;
 }
 
+/* when the type of intensity threshold (Sw-min or A-min) is changed, this
+   function gets called to change the units (cm-1/molec.cm-2 or s-1) */
+function change_intens_type()
+{
+    oIntensType = document.SearchForm.elements["intens_thresh_type"];
+    intens_type = oIntensType.value;
+    oIntensUnits = document.getElementById("intens_thresh_units");
+
+    if (intens_type == 'Sw') {
+        units = 'cm<sup>-1</sup>/molec.cm<sup>-2</sup>';
+    } else if (intens_type == 'A') {
+        units = 's<sup>-1</sup>';
+    } else {
+        units = '???';   // this should never happen
+    }
+    oIntensUnits.innerHTML = units;
+}
+
+/* we need to know which collectionID corresponds to the native HITRAN
+   format, because some form elements, such as default entries, are
+   hidden in this case. We get one shot at it, when the page loads. */
+HITRAN_collectionID = 0;
+function find_HITRAN_collection() {
+    {% for output_collection in output_collections %}
+        {% if output_collection.name = 'HITRAN2004+' %}
+            HITRAN_collectionID = {{ forloop.counter0 }};
+        {% endif %}
+    {% endfor %}
+}
+
 /* this function is called when a new output collection is selected from
    the drop-down box output_collection */
 function change_output_collection()
 {
     collectionID = document.SearchForm.elements["output_collection"].value;
     update_output_formats(collectionID);
+    default_entries = document.getElementById("default_entries");
+    /* set the default entry pull-down box to visible, only if the collection
+       selected is NOT a native HITRAN format */
+    if (collectionID == HITRAN_collectionID) {
+        default_entries.style.visibility = 'hidden';
+    } else {
+        default_entries.style.visibility = 'visible';
+    }
 }
 
 /* update the div containing a list of the output fields for the selected
@@ -148,7 +186,8 @@ function load_output_fields_html()
 </head>
 <body onload="load_output_fields_html();
               fill_current_date();
-              change_output_collection();">
+              change_output_collection();
+              find_HITRAN_collection();">
 
 <h1>HITRAN line-by-line search</h1>
 
@@ -200,11 +239,15 @@ function load_output_fields_html()
 <td><input type="text" name="numax"></td>
 <td id="numax_units">cm<sup>-1</sup></td>
 </tr>
-<!-- line intensity -->
+<!-- line intensity or Einstein A-factor -->
 <tr>
-<td><em>Sw</em><sub>min</sub></td>
-<td><input type="text" name="Swmin"></td>
-<td>cm<sup>-1</sup>/molec.cm<sup>-2</sup></td>
+<!--<td><em>Sw</em><sub>min</sub></td>-->
+<td><select onchange="JavaScript:change_intens_type()" name="intens_thresh_type">
+    <option value="Sw" selected>Sw-min</option>
+    <option value="A">A-min</option>
+</select></td>
+<td><input type="text" name="intens_min"></td>
+<td id="intens_thresh_units">cm<sup>-1</sup>/molec.cm<sup>-2</sup></td>
 </tr>
 <!-- valid-on date -->
 <tr>
@@ -230,6 +273,17 @@ function load_output_fields_html()
 <!-- output fields for the selected collection -->
 <div id="output_fields">
 <p>Something went wrong - there should be a list of output fields here</p>
+</div>
+
+<div id="default_entries">
+<p>Default entry for missing data:
+<select name="default_entry">
+    <option value="whitespace">[whitespace]</option>
+    <option value="minus1">-1</option>
+    <option value="asterisk">*</option>
+    <option value="hash">#</option>
+</select>
+</p>
 </div>
 
 <!--<p><input type="checkbox" name="get_states" value="yes"/>&nbsp;Retrieve states in separate file</p>-->

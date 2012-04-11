@@ -38,6 +38,7 @@ class LblSearchForm:
     def __init__(self, post_data):
         self.valid = False
         self.error_msg = '<p class="error_msg">Unspecified error<p>'
+
         try:
             if post_data.get('numin') == '':
                 self.numin = None
@@ -52,13 +53,22 @@ class LblSearchForm:
             self.numin = convert_to_wavenumber(self.numin, self.nu_units)
             self.numax = convert_to_wavenumber(self.numax, self.nu_units)
 
-            if post_data.get('Swmin') == '':
+            self.Swmin = None
+            self.Amin = None
+            self.intens_thresh_type = post_data.get('intens_thresh_type')
+            intens_min = post_data.get('intens_min')
+            if intens_min != '':
+                if self.intens_thresh_type == 'Sw':
+                    self.Swmin = float(intens_min)
+                elif self.intens_thresh_type == 'A':
+                        self.Amin = float(intens_min)
+
+            # negative intensity thresholds are silly but OK
+            if self.Swmin <= 0.:
                 self.Swmin = None
-            else:
-                self.Swmin = float(post_data.get('Swmin'))
-            if self.Swmin < 0.:
-                # negative Swmin is silly but OK
-                self.Swmin = None
+            if self.Amin <= 0.:
+                self.Amin = None
+
             self.output_collection_index = int(
                     post_data.get('output_collection'))
             self.datestamp = datetime.strptime(post_data.get('date'),
@@ -67,6 +77,7 @@ class LblSearchForm:
             #if post_data.get('get_states'):
             #    self.get_states = True
         except ValueError:
+            self.error_msg = '<p class="error_msg">Invalid search terms</p>'
             return
         if self.numin is not None and self.numax is not None and\
                 self.numin > self.numax:
@@ -89,6 +100,16 @@ class LblSearchForm:
                     ' specified</p>'
                 return
         self.selected_molecIDs = selected_molecIDs
+
+        # don't allow any shenanigans with the default entries
+        default_entries = {'whitespace': ' ', 'asterisk': '*',
+                           'minus1': '-1', 'hash': '#'}
+        try:
+            self.default_entry = default_entries[post_data.get(
+                                                    'default_entry')]
+        except KeyError:
+            self.error_msg = '<p class="error_msg">Invalid default entry</p>'
+            return
 
         self.error_msg = ''
         self.valid = True
