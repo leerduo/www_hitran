@@ -4,7 +4,7 @@ from django.core.context_processors import csrf
 from django.shortcuts import render_to_response
 from models import *
 from django.db.models import Q
-from hitranmeta.models import Molecule, OutputCollection, Iso, Ref
+from hitranmeta.models import Molecule, OutputCollection, Iso, Source
 from lbl_searchform import LblSearchForm
 import os
 import time
@@ -57,6 +57,8 @@ def do_search(form):
         return do_search_astro_min(form)
     if output_collection.name == 'atmos-min':
         return do_search_atmos_min(form)
+    if output_collection.name == 'test':
+        return do_search_test(form)
     print 'unknown collection!'
     return [], {}
 
@@ -320,4 +322,160 @@ def write_par(filestem, par_lines):
         print >>fo, par_line[0]
     fo.close()
     return [parpath,]
+
+def do_search_test(form):
+    """
+    A test output collection.
+
+    """
+
+    start_time = time.time()
+
+    # just the isotopologue ids
+    iso_ids = Iso.objects.filter(molecule__molecID__in=form.selected_molecIDs)\
+                                 .values_list('id', flat=True)
+
+    # NB protect against SQL injection when constructing the query
+    iso_ids_list = ','.join(str(int(id)) for id in iso_ids)
+    q_conds = ['t.iso_id IN (%s)' % iso_ids_list,]
+    if form.numin:
+        q_conds.append('nu>=%f' % form.numin)
+    if form.numax:
+        q_conds.append('nu<=%f' % form.numax)
+    if form.Swmin:
+        q_conds.append('Sw>=%e' % form.Swmin)
+    elif form.Amin:
+        q_conds.append('A>=%e' % form.Amin)
+    q_conds.append('p.name IN ("nu", "Sw", "gamma_air", "gamma_self",'\
+                              '"n_air", "delta_air", "gamma_H2O")')
+
+    q_fields = ['t.id', 't.iso_id',
+            't.Elower', 't.gp', 't.statep_id', 't.statepp_id',
+            'GROUP_CONCAT(p.name, "=", p.val)',
+            'GROUP_CONCAT(p.name, "=", p.err)',
+            'GROUP_CONCAT(p.name, "=", p.source_id)']
+    q_from = 'hitranlbl_trans t INNER JOIN hitranlbl_prm p ON p.trans_id=t.id'
+               
+    q_where = ' AND '.join(q_conds)
+    query = 'SELECT %s FROM %s WHERE %s GROUP BY t.id'\
+                 % (','.join(q_fields), q_from, q_where)
+
+    search_summary = {'summary_html':
+                '<p>Here are the results of the query in '\
+                ' test format</p>'}
+
+    # here's where we do the rawest of the raw SQL query
+    from django.db import connection, transaction
+    cursor = connection.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    ntrans = len(rows)
+    te = time.time()
+    print 'time to get transitions = %.1f secs' % (te - start_time)
+
+    ts = time.time()
+    filestem = get_filestem()
+    output_files = write_test(filestem, form, rows)
+    te = time.time()
+    print 'time to write transitions = %.1f secs' % (te - ts)
+
+    # strip path from output filenames:
+    output_files = [os.path.basename(x) for x in output_files]
+
+    end_time = time.time()
+        
+    search_summary['ntrans'] = ntrans
+    search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
+
+    return output_files, search_summary 
+
+def write_test(filestem, form, rows):
+    outpath = os.path.join(settings.RESULTSPATH, '%s-trans.txt' % filestem)
+    fo = open(outpath, 'w')
+
+    if form.default_entry == '-1':
+        default_Epp = '   -1.0000'
+        default_gp = '   -1'
+    else:
+        default_Epp = form.default_entry * 10
+        default_gp = form.default_entry * 5
+
+    source_ids = set()
+    for row in rows:
+        try:
+            s_Epp = '%10.4f' % row[2]
+        except TypeError:
+            s_Epp = default_Epp
+        try:
+            s_gp = '%5d' % row[3]
+        except TypeError:
+            s_gp = default_gp
+
+        # parameter values
+        prms = row[6].split(',')
+        # NB the defaults for these parameters are 0.
+        nu = -1.
+        Sw = -1.
+        n_air = 0.
+        gamma_self = 0.
+        delta_air = 0.
+        gamma_H2O = 0.
+        for prm in prms:
+            prm_name, prm_val = prm.split('=')
+            exec('%s=float(prm_val)' % prm_name)
+        # parameter sources
+        prm_refs = row[8].split(',')
+        # XXX sort out the default character thing later...
+        nu_ref = 0
+        Sw_ref = 0
+        gamma_air_ref = 0
+        n_air_ref = 0
+        gamma_self_ref = 0
+        delta_air_ref = 0
+        gamma_H2O_ref = 0
+        for prm in prm_refs:
+            prm_name, prm_ref = prm.split('=')
+            i_prm_ref = int(prm_ref)
+            exec('%s_ref=i_prm_ref' % prm_name)
+            source_ids.add(i_prm_ref)
+
+        molecID, isoID = hitranIDs[row[1]]
+        print >>fo, '%12d %2d%1d %12.6f%4d %10.3e%4d '\
+                    '%10s%5s %6.4f%4d %6.4f%4d %7.4f%4d'\
+                    '%9.6f%4d %6.4f%4d'\
+            % (row[0], molecID, isoID,
+               nu, nu_ref,
+               Sw, Sw_ref,
+               s_Epp, s_gp, 
+               gamma_air, gamma_air_ref,
+               gamma_self, gamma_self_ref,
+               n_air, n_air_ref,
+               delta_air, delta_air_ref,
+               gamma_H2O, gamma_H2O_ref)
+    fo.close()
+
+    sourcespath = os.path.join(settings.RESULTSPATH, '%s-sources.html'
+                                                    % filestem)
+    write_sources_html(sourcespath, source_ids)
+
+    return [outpath,sourcespath]
+
+def write_sources_html(sourcespath, source_ids):
+    fo = open(sourcespath, 'w')
+    print >>fo, '<html><head>'
+    print >>fo, '<link rel="stylesheet" href="sources.css" type="text/css"'\
+                ' media="screen"/>'
+    print >>fo, '<link rel="stylesheet" href="sources_print.css"'\
+                ' type="text/css" media="print"/>'
+    print >>fo, '<meta charset="utf-8"/>'
+    print >>fo, '</head><body>'
+
+    print >>fo, '<div>'
+    for source_id in sorted(source_ids):
+        source = Source.objects.get(pk=source_id)
+        print >>fo, '<p>%s</p>' % (
+                    unicode(source.html(sublist=True)).encode('utf-8'))
+    print >>fo, '<div>'
+    print >>fo, '</body></html>'
+    fo.close()
     

@@ -171,9 +171,9 @@ function fill_current_date()
 var output_fields_html = new Array();
 function load_output_fields_html()
 {
-    {% for output_collection in output_collections %}
+    {% for output_collection in output_collections.all %}
         field_html = '<table>'
-        {% for output_field in output_collection.output_field.all %}
+        {% for output_field in output_collection.output_fields.all %}
             field_html += '<tr class="{% cycle 're' 'ro' %}"><td>{{ output_field.name_html|safe }}</td><td class="desc"> {{ output_field.desc_html|safe }}</td></tr>'
         {% endfor %}
         field_html += '</table>'
@@ -186,8 +186,9 @@ function load_output_fields_html()
 </head>
 <body onload="load_output_fields_html();
               fill_current_date();
+              find_HITRAN_collection();
               change_output_collection();
-              find_HITRAN_collection();">
+              change_intens_type();">
 
 <h1>HITRAN line-by-line search</h1>
 

@@ -173,7 +173,8 @@ class OutputField(models.Model):
 class OutputCollection(models.Model):
     # collection name
     name = models.CharField(max_length=50)
-    output_field = models.ManyToManyField(OutputField)
+    output_fields = models.ManyToManyField(OutputField,
+                                           through='OutputFieldOrder')
 
     def __unicode__(self):
         return self.name
@@ -181,6 +182,18 @@ class OutputCollection(models.Model):
     class Meta:
         app_label='hitranmeta'
 
+class OutputFieldOrder(models.Model):
+    output_field = models.ForeignKey(OutputField)
+    output_collection = models.ForeignKey(OutputCollection)
+    position = models.IntegerField()
+
+    def __unicode__(self):
+        return '%s: %d. %s' % (self.output_collection.name, self.position,
+                               self.output_field.name)
+
+    class Meta:
+        app_label='hitranmeta'
+        ordering = ['position']
 
 #########################
 class SourceMethod(models.Model):
