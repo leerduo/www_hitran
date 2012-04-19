@@ -10,6 +10,9 @@
 
 <title>HITRAN line-by-line search</title>
 <link rel="stylesheet" href="/static/css/layout.css" type="text/css" media="screen"/>
+<link rel="stylesheet" href="/static/css/modal-layout.css" type="text/css" media="screen"/>
+<script type="text/JavaScript" src="/static/jquery-1.4.2.min.js"></script>
+<script type="text/JavaScript" src="/static/modal.js"></script>
 
 <script type="text/javascript">
 
@@ -60,6 +63,47 @@ function select_first_seven()
             break;
         }
     }
+}
+
+
+/* we need a list of isotopologues for each molecule
+*/
+var isoIDs = new Array();
+function get_iso_ids()
+{
+isoIDs[0] = ''; // no molecID=0
+{% for molecule in present_molecules %}
+    isoIDs[{{ molecule.molecID }}] = new Array()
+    {% for iso in molecule.iso_set.all %}
+        isoIDs[{{ molecule.molecID }}].push({{ iso.id }});
+    {% endfor %}
+{% endfor %}
+}
+
+/* called when a molecule's checkbox is clicked */
+function molecule_checkbox(molecID)
+{
+    oElements = document.SearchForm.elements["molecule"];
+    var iMolec = 0;
+    for (var i in oElements) {
+        if (oElements[i].value == molecID) {
+            oCheckBox = oElements[i];
+            if (oCheckBox.checked) {
+                //oCheckBox.checked = false;
+                // uncheck all isotopologues
+                oIsoCheckBoxes = document.SearchForm.elements["iso"];
+                for (isoCheckBox in oIsoCheckBoxes) {
+                    isoCheckBox.checked = false;
+                }
+            } else {
+                //oCheckBox.checked = true;
+                // check all isotopologues
+                // XXX
+            }
+            break;
+        }
+    }
+    //alert("Hello!" + molecID + ': ' + isoIDs[molecID]);
 }
 
 /* when the requested wavenumber/wavelength search units are changed,
@@ -181,18 +225,42 @@ function load_output_fields_html()
     {% endfor %}
 }
 
+function initialize_page()
+{
+    load_output_fields_html();
+    fill_current_date();
+    find_HITRAN_collection();
+    change_output_collection();
+    change_intens_type();
+    get_iso_ids();
+}
+
 </script>
 
 </head>
-<body onload="load_output_fields_html();
-              fill_current_date();
-              find_HITRAN_collection();
-              change_output_collection();
-              change_intens_type();">
+<body onload="initialize_page();">
 
 <h1>HITRAN line-by-line search</h1>
 
 <form name="SearchForm" method="POST">{% csrf_token %}
+
+<!-- isotopologue modal windows -->
+<div id="mask" class="close_modal"></div>
+{% for molecule in present_molecules %}
+<div id="isos_{{ molecule.molecID }}_window" class="modal_window">
+<h4>Select the required isotopologues of {{ molecule.ordinary_formula_html|safe }}</h4>
+<table>
+{% for iso in molecule.iso_set.all %}
+<tr>
+<td><input type="checkbox" name="iso" value="{{ iso.id }}"/></td>
+<td>&nbsp;{{ iso.iso_name_html|safe }}</td>
+<td>({{ iso.afgl_code }})</td>
+<td>{{ iso.abundance }}</td>
+</tr>
+{% endfor %}
+</table>
+</div>
+{% endfor %}
 
 <div id="content">
 
@@ -213,8 +281,10 @@ function load_output_fields_html()
 <tr>
 {% for molecule in present_molecules %}
 {% if forloop.counter0|divisibleby:4 %}</tr><tr>{% endif %}
-<td><input type="checkbox" name="molecule" value="{{ molecule.molecID }}"/>
-&nbsp;{{ molecule.ordinary_formula_html|safe }}</td>
+<td><input type="checkbox" name="molecule" onchange="JavaScript:molecule_checkbox({{ molecule.molecID }})" value="{{ molecule.molecID }}"/>
+&nbsp;
+<a class="activate_modal" name="isos_{{ molecule.molecID }}_window" href="#">{{ molecule.ordinary_formula_html|safe }}</a>
+</td>
 {% endfor %}
 </tr>
 </table>
@@ -255,6 +325,7 @@ function load_output_fields_html()
 <td>Valid on</td>
 <td><input type="text" name="valid_on" id="valid_on_date"/></td>
 </tr>
+
 </table>
 
 </div> <!-- lblsearch_left_panel -->

@@ -1,0 +1,21 @@
+#mask {  
+    position:absolute; /* important */  
+    top:0px; /* start from top */  
+    left:0px; /* start from left */  
+    height:100%; /* cover the whole page */  
+    width:100%;  /* cover the whole page */  
+    display:none; /* don't show it '*/  
+  
+    background-color: black;  
+}  
+  
+.modal_window{  
+    position:absolute; /* important so we can centre it later */  
+    display:none;
+    color: #000;  
+    background: #fff;
+    width: 25%; height: 50%;
+    border: 1px solid black;  
+    padding:50px;  
+}  
+  

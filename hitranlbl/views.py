@@ -14,6 +14,8 @@ from itertools import chain
 # get a list of molecule objects with entries in the Trans table
 p_ids = Trans.objects.values('iso__molecule').distinct()
 present_molecules = Molecule.objects.filter(molecID__in=p_ids)
+molec_isos = {}
+molec_isos[4] = Iso.objects.all().filter(molecule=present_molecules[3])
 
 # map globally-unique isotopologue IDs to HITRAN molecID and isoID
 hitranIDs = [(0,0),]    # no iso_id=0
@@ -39,6 +41,7 @@ def index(request):
     c = {}
     c.update(csrf(request))
     c['present_molecules'] = present_molecules
+    c['molec_isos'] = molec_isos
     c['output_collections'] = output_collections
     return render_to_response('index.html', c)
 
