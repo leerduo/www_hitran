@@ -71,22 +71,21 @@ def make_sql_query(form, fields):
 
     # NB protect against SQL injection when constructing the query
     iso_ids_list = ','.join(str(int(id)) for id in iso_ids)
-    q_numin = ''
+    q_conds = ['iso_id IN (%s)' % iso_ids_list,]
     if form.numin:
-        q_numin = ' AND nu>=%f' % form.numin
-    q_numax = ''
+        q_conds.append('nu>=%f' % form.numin)
     if form.numax:
-        q_numax = ' AND nu<=%f' % form.numax
-    q_intens_min = ''
+        q_conds.append('nu<=%f' % form.numax)
     if form.Swmin:
-        q_intens_min = ' AND Sw>=%e' % form.Swmin
+        q_conds.append('Sw>=%e' % form.Swmin)
     elif form.Amin:
-        q_intens_min = ' AND A>=%e' % form.Amin
+        q_conds.append('A>=%e' % form.Amin)
+    q_conds.append('valid_from <= "%s"' % form.valid_on.strftime('%Y-%m-%d'))
+    q_conds.append('valid_to > "%s"' % form.valid_on.strftime('%Y-%m-%d'))
 
-    query = 'SELECT %s FROM hitranlbl_trans WHERE iso_id'\
-            ' IN (%s)%s%s%s' % (','.join(fields), iso_ids_list, q_numin,
-                                q_numax, q_intens_min)
-    #print query
+    query = 'SELECT %s FROM hitranlbl_trans WHERE %s'\
+            % (','.join(fields), ' AND '.join(q_conds))
+    print query
     return query
 
 def get_filestem():
@@ -126,6 +125,8 @@ def do_search_atmos_min(form):
         q_conds.append('A>=%e' % form.Amin)
     q_conds.append('p.name IN ("gamma_air", "gamma_self", "n_air",'\
                              ' "delta_air")')
+    q_conds.append('valid_from <= "%s"' % form.valid_on.strftime('%Y-%m-%d'))
+    q_conds.append('valid_to > "%s"' % form.valid_on.strftime('%Y-%m-%d'))
 
     q_fields = ['t.id', 't.iso_id', 't.nu', 't.Sw',
             't.Elower', 't.gp', 't.statep_id', 't.statepp_id',
@@ -350,6 +351,8 @@ def do_search_test(form):
         q_conds.append('A>=%e' % form.Amin)
     q_conds.append('p.name IN ("nu", "Sw", "gamma_air", "gamma_self",'\
                               '"n_air", "delta_air", "gamma_H2O")')
+    q_conds.append('valid_from <= "%s"' % form.valid_on.strftime('%Y-%m-%d'))
+    q_conds.append('valid_to > "%s"' % form.valid_on.strftime('%Y-%m-%d'))
 
     q_fields = ['t.id', 't.iso_id',
             't.Elower', 't.gp', 't.statep_id', 't.statepp_id',
@@ -488,6 +491,8 @@ def do_search_testO2(form):
     q_conds.append('p.name IN ("nu", "Sw", "gamma_air", "gamma_self",'\
                              ' "n_air", "delta_air", "G_gamma_air",'\
                              ' "G_eta_air", "G_gamma_self", "G_eta_self")')
+    q_conds.append('valid_from <= "%s"' % form.valid_on.strftime('%Y-%m-%d'))
+    q_conds.append('valid_to > "%s"' % form.valid_on.strftime('%Y-%m-%d'))
 
     q_fields = ['t.id', 't.iso_id',
             't.Elower', 't.gp', 't.statep_id', 't.statepp_id',
@@ -501,7 +506,7 @@ def do_search_testO2(form):
 
     search_summary = {'summary_html':
                 '<p>Here are the results of the query in '\
-                ' test format</p>'}
+                ' testO2 format</p>'}
 
     # here's where we do the rawest of the raw SQL query
     from django.db import connection, transaction
@@ -566,7 +571,10 @@ def write_testO2(filestem, form, rows):
             prm_name, prm_val = prm.split('=')
             exec('%s=float(prm_val)' % prm_name)
         # parameter sources
-        prm_refs = row[7].split(',')
+        try:
+            prm_refs = row[7].split(',')
+        except AttributeError:  # Oops: prm_refs is None
+            prm_refs = []
         # XXX sort out the default character thing later...
         nu_ref = 0
         Sw_ref = 0
@@ -585,10 +593,10 @@ def write_testO2(filestem, form, rows):
             source_ids.add(i_prm_ref)
 
         molecID, isoID = hitranIDs[row[1]]
-        print >>fo, '%12d %2d%1d %12.6f%4d %10.3e%4d '\
-                    '%10s%5s %6.4f%4d %6.4f%4d %7.4f%4d'\
-                    '%9.6f%4d %6.4f%4d'\
-                    ' %6.4f%4d %6.4f%4d %6.4f%4d'\
+        print >>fo, '%12d %2d%1d %12.6f[%4d] %10.3e[%4d] '\
+                    '%10s%5s %6.4f[%4d] %6.4f[%4d] %7.4f[%4d]'\
+                    '%9.6f[%4d] %6.4f[%4d]'\
+                    ' %6.4f[%4d] %6.4f[%4d] %6.4f[%4d]'\
             % (row[0], molecID, isoID,
                nu, nu_ref,
                Sw, Sw_ref,

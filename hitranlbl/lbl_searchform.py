@@ -71,7 +71,7 @@ class LblSearchForm:
 
             self.output_collection_index = int(
                     post_data.get('output_collection'))
-            self.datestamp = datetime.strptime(post_data.get('date'),
+            self.valid_on = datetime.strptime(post_data.get('valid_on'),
                     '%Y-%m-%d').date()
             #self.get_states = False
             #if post_data.get('get_states'):

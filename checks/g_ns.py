@@ -343,6 +343,11 @@ g_ns_dict['H(16O)(81Br)'] = 8
 g_ns_dict['(12C)H3(16O)H'] = g_ns_CH3OH_1
 g_ns_dict['(12C)H3(12C)(14N)'] = g_ns_CH3CN_1
 
+g_ns_dict['(12C)(32S)'] = 1
+g_ns_dict['(12C)(34S)'] = 1
+g_ns_dict['(13C)(32S)'] = 2
+g_ns_dict['(12C)(33S)'] = 4
+
 def g_ns(iso, qn_dict):
     """
     Return the nuclear spin degeneracy for the state of a given isotopologue

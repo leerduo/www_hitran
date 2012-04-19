@@ -24,6 +24,22 @@ class State(models.Model):
     class Meta:
         app_label = 'hitranlbl'
 
+    def str_rep(self):
+        """
+        A helper function to return a string representation of the state
+
+        """
+        try:
+            s_g = '%5d' % self.g
+        except TypeError:
+            s_g = ''
+        try:
+            s_E = '%10.4f' % self.energy
+        except TypeError:
+            s_E = ''
+        return '%2d%1d%s%s%s' % (self.iso.molecule.molecID,
+            self.iso.isoID, s_E, s_g, self.s_qns)
+
 class Trans(models.Model):
     iso = models.ForeignKey('hitranmeta.iso')
     statep = models.ForeignKey('State', related_name='trans_upper_set')
@@ -49,6 +65,7 @@ class Prm(models.Model):
     name = models.CharField(max_length=20)
     val = models.FloatField()
     err = models.FloatField(blank=True, null=True)
+    ierr = models.IntegerField(blank=True, null=True)
     ref = models.ForeignKey('hitranmeta.ref', blank=True, null=True)
     source = models.ForeignKey('hitranmeta.source', blank=True, null=True)
     method = models.IntegerField(blank=True, null=True)

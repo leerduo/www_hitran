@@ -29,6 +29,9 @@ class Molecule(models.Model):
     common_name = models.CharField(max_length=100, null=True, blank=True)
     # CML representation of the species, with no isotope information
     cml = models.TextField(null=True, blank=True)
+    def __unicode__(self):
+        return self.ordinary_formula
+
     class Meta:
         app_label='hitranmeta'
 
@@ -78,6 +81,8 @@ class NucSpins(models.Model):
 class Case(models.Model):
     case_prefix = models.CharField(max_length=10, unique=True)
     case_description = models.CharField(max_length=50)
+    def __unicode__(self):
+        return '%d: %s' % (self.id, self.case_prefix)
 
     class Meta:
         app_label='hitranmeta'
@@ -208,6 +213,18 @@ class SourceType(models.Model):
     def __unicode__(self):
         return self.source_type
     class Meta:
+        app_label = 'hitranmeta'
+
+class RefsMap(models.Model):
+    # RefsMap maps the refID in the HITRAN notation, <molec_name>-<prm>-##
+    # to source_id the primary key of the Source table
+    refID = models.CharField(max_length=100)
+    source_id = models.IntegerField(null=False, blank=False)
+    def __unicode__(self):
+        return '%s -> %s' % (self.refID, self.source_id)
+
+    class Meta:
+        db_table = 'hitranmeta_refs_map'
         app_label = 'hitranmeta'
 
 class Source(models.Model):

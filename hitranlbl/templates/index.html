@@ -159,7 +159,7 @@ function update_output_formats(collectionID) {
    on page load */
 function fill_current_date()
 {
-    date_box = document.getElementById("date");
+    date_box = document.getElementById("valid_on_date");
     var today = new Date();
     // God, JavaScript is awful:
     date_box.value = today.getFullYear() + '-' + (today.getMonth()+1)
@@ -253,7 +253,7 @@ function load_output_fields_html()
 <!-- valid-on date -->
 <tr>
 <td>Valid on</td>
-<td><input type="text" name="date" id="date"/></td>
+<td><input type="text" name="valid_on" id="valid_on_date"/></td>
 </tr>
 </table>
 
