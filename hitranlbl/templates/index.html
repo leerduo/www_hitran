@@ -81,29 +81,17 @@ isoIDs[0] = ''; // no molecID=0
 }
 
 /* called when a molecule's checkbox is clicked */
-function molecule_checkbox(molecID)
+function molecule_checkbox(oCheckBox)
 {
-    oElements = document.SearchForm.elements["molecule"];
-    var iMolec = 0;
-    for (var i in oElements) {
-        if (oElements[i].value == molecID) {
-            oCheckBox = oElements[i];
-            if (oCheckBox.checked) {
-                //oCheckBox.checked = false;
-                // uncheck all isotopologues
-                oIsoCheckBoxes = document.SearchForm.elements["iso"];
-                for (isoCheckBox in oIsoCheckBoxes) {
-                    isoCheckBox.checked = false;
-                }
-            } else {
-                //oCheckBox.checked = true;
-                // check all isotopologues
-                // XXX
-            }
-            break;
-        }
+    var molecID = oCheckBox.value;
+    var isos_div_id = "isos_"+molecID+"_window";
+    var oIsosDiv = document.getElementById(isos_div_id);
+    alert(isos_div_id);
+    var oIsoCheckBoxes = oIsosDiv.getElementsByTagName("input");
+    // check or uncheck all isotopologues for this molecule
+    for (var i in oIsoCheckBoxes) {
+        oIsoCheckBoxes[i].checked = oCheckBox.checked;
     }
-    //alert("Hello!" + molecID + ': ' + isoIDs[molecID]);
 }
 
 /* when the requested wavenumber/wavelength search units are changed,
@@ -247,12 +235,12 @@ function initialize_page()
 <!-- isotopologue modal windows -->
 <div id="mask" class="close_modal"></div>
 {% for molecule in present_molecules %}
-<div id="isos_{{ molecule.molecID }}_window" class="modal_window">
+<div id="isos_{{ molecule.molecID }}_window" name="{{ molecule.molecID }}" class="modal_window">
 <h4>Select the required isotopologues of {{ molecule.ordinary_formula_html|safe }}</h4>
 <table>
 {% for iso in molecule.iso_set.all %}
 <tr>
-<td><input type="checkbox" name="iso" value="{{ iso.id }}"/></td>
+<td><input type="checkbox" name="iso" class="isocheckbox_{{ iso.id }}" value="{{ iso.id }}"/></td>
 <td>&nbsp;{{ iso.iso_name_html|safe }}</td>
 <td>({{ iso.afgl_code }})</td>
 <td>{{ iso.abundance }}</td>
@@ -281,7 +269,7 @@ function initialize_page()
 <tr>
 {% for molecule in present_molecules %}
 {% if forloop.counter0|divisibleby:4 %}</tr><tr>{% endif %}
-<td><input type="checkbox" name="molecule" onchange="JavaScript:molecule_checkbox({{ molecule.molecID }})" value="{{ molecule.molecID }}"/>
+<td><input type="checkbox" name="molecule" onchange="JavaScript:molecule_checkbox(this)" value="{{ molecule.molecID }}"/>
 &nbsp;
 <a class="activate_modal" name="isos_{{ molecule.molecID }}_window" href="#">{{ molecule.ordinary_formula_html|safe }}</a>
 </td>

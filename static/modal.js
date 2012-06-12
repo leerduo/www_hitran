@@ -1,3 +1,9 @@
+// the ID of the molecule whose modal isotopologues window is open is called
+// this_molecule, and it needs to be a global variable
+var this_molecule = 0;
+// the ID of the modal window for the selected molecule
+var modal_id = 0;
+
 $(document).ready(function(){
     //get the height and width of the page
     var window_width = $(window).width();
@@ -20,7 +26,7 @@ $(document).ready(function(){
     $('.activate_modal').click(function(){  
         /* get the id of the modal window stored in the name of the
            activating element */
-        var modal_id = $(this).attr('name');
+        modal_id = $(this).attr('name');
         show_modal(modal_id);
     });
 
@@ -30,6 +36,22 @@ $(document).ready(function(){
     });
  
 function close_modal() {
+    //alert("isos window for molecule "+this_molecule+" is about to close");
+    /*var s = '';
+    for (isoID in isoIDs[this_molecule]) {
+        s += ','+isoID;
+    }
+    alert("isos:"+s);*/
+    select_molecule = false;
+    for (var isoID in isoIDs[this_molecule]) {
+        var cbx = $('#'+modal_id).find('.isocheckbox_'+isoID);
+        if (cbx.attr('checked')) {
+            select_molecule = true;
+        }
+    }
+    alert("select the molecule? "+select_molecule);
+    //var cbx = $('#isos_6_window').find('.isocheckbox_33');
+    //alert("cbx-6-34:" + cbx.attr('value') + cbx.attr('checked'));
     //hide the mask  
     $('#mask').fadeOut(250);  
     //hide modal window(s)  
@@ -42,6 +64,6 @@ function show_modal(modal_id) {
     // fade in the mask to opacity 0.6  
     $('#mask').fadeTo(250,0.8);  
     // show the modal window  
-    $('#'+modal_id).fadeIn(250);  
-
+    $('#'+modal_id).fadeIn(250);
+    this_molecule = $('#'+modal_id).attr('name');
 }

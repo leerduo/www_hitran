@@ -63,7 +63,7 @@ class Iso(models.Model):
     cml = models.TextField(null=True, blank=True)
     case = models.ForeignKey('Case', null=True, blank=True)
     def __unicode__(self):
-        return self.iso_name
+        return '%d. %s' % (self.id,self.iso_name)
 
     class Meta:
         app_label='hitranmeta'
