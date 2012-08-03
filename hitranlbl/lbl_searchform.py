@@ -52,6 +52,8 @@ class LblSearchForm:
 
             self.numin = convert_to_wavenumber(self.numin, self.nu_units)
             self.numax = convert_to_wavenumber(self.numax, self.nu_units)
+            if self.nu_units in ('A', 'nm', 'um'):
+                self.numin, self.numax = self.numax, self.numin
 
             self.Swmin = None
             self.Amin = None
@@ -86,20 +88,37 @@ class LblSearchForm:
                 'minimum must not be greater than maximum</p>'
             return
 
-        selected_molecIDs = post_data.getlist('molecule')
-        if not selected_molecIDs:
-            # no molecules selected!
-            self.error_msg = '<p class="error_msg">No molecules selected</p>'
-            return
+        #selected_molecIDs = post_data.getlist('molecule')
+        #if not selected_molecIDs:
+        #    # no molecules selected!
+        #    self.error_msg = '<p class="error_msg">No molecules selected</p>'
+        #    return
         # make sure the selected_molecIDs are integers
-        for molecID in selected_molecIDs:
+        #for molecID in selected_molecIDs:
+        #    try:
+        #        dummy = int(molecID)
+        #    except ValueError:
+        #        self.error_msg = '<p class="error_msg">Invalid molecule ID'\
+        #            ' specified</p>'
+        #        return
+        #self.selected_molecIDs = selected_molecIDs
+
+        selected_isoIDs = post_data.getlist('iso')
+        if not selected_isoIDs:
+            # no isotopologues selected!
+            self.error_msg = '<p class="error_msg">No isotopologues selected'\
+                             '</p>'
+            return
+        # make sure the selected_isoIDs are integers
+        for isoID in selected_isoIDs:
             try:
-                dummy = int(molecID)
+                dummy = int(isoID)
             except ValueError:
-                self.error_msg = '<p class="error_msg">Invalid molecule ID'\
-                    ' specified</p>'
+                self.error_msg = '<p class="error_msg">Invalid isotopologue'\
+                                 'ID specified</p>'
                 return
-        self.selected_molecIDs = selected_molecIDs
+        self.selected_isoIDs = selected_isoIDs
+            
 
         # don't allow any shenanigans with the default entries
         default_entries = {'whitespace': ' ', 'asterisk': '*',

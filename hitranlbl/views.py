@@ -64,12 +64,14 @@ def do_search(form):
         return do_search_test(form)
     if output_collection.name == 'testO2':
         return do_search_testO2(form)
+    if output_collection.name == 'testCO2':
+        return do_search_testCO2(form)
     print 'unknown collection!'
     return [], {}
 
 def make_sql_query(form, fields):
     # just the isotopologue ids
-    iso_ids = Iso.objects.filter(molecule__molecID__in=form.selected_molecIDs)\
+    iso_ids = Iso.objects.filter(pk__in=form.selected_isoIDs)\
                                  .values_list('id', flat=True)
 
     # NB protect against SQL injection when constructing the query
@@ -112,7 +114,7 @@ def do_search_atmos_min(form):
     start_time = time.time()
 
     # just the isotopologue ids
-    iso_ids = Iso.objects.filter(molecule__molecID__in=form.selected_molecIDs)\
+    iso_ids = Iso.objects.filter(pk__in=form.selected_isoIDs)\
                                  .values_list('id', flat=True)
 
     # NB protect against SQL injection when constructing the query
@@ -338,7 +340,7 @@ def do_search_test(form):
     start_time = time.time()
 
     # just the isotopologue ids
-    iso_ids = Iso.objects.filter(molecule__molecID__in=form.selected_molecIDs)\
+    iso_ids = Iso.objects.filter(pk__in=form.selected_isoIDs)\
                                  .values_list('id', flat=True)
 
     # NB protect against SQL injection when constructing the query
@@ -477,7 +479,7 @@ def do_search_testO2(form):
     start_time = time.time()
 
     # just the isotopologue ids
-    iso_ids = Iso.objects.filter(molecule__molecID__in=form.selected_molecIDs)\
+    iso_ids = Iso.objects.filter(pk__in=form.selected_isoIDs)\
                                  .values_list('id', flat=True)
 
     # NB protect against SQL injection when constructing the query
@@ -612,6 +614,154 @@ def write_testO2(filestem, form, rows):
                G_eta_air, G_eta_air_ref,
                G_gamma_self, G_gamma_self_ref,
                G_eta_self, G_eta_self_ref)
+    fo.close()
+
+    sourcespath = os.path.join(settings.RESULTSPATH, '%s-sources.html'
+                                                    % filestem)
+    write_sources_html(sourcespath, source_ids)
+
+    return [outpath,sourcespath]
+
+def do_search_testCO2(form):
+    """
+    A test output collection for lines with CO2-broadening
+
+    """
+
+    start_time = time.time()
+
+    # just the isotopologue ids
+    iso_ids = Iso.objects.filter(pk__in=form.selected_isoIDs)\
+                                 .values_list('id', flat=True)
+
+    # NB protect against SQL injection when constructing the query
+    iso_ids_list = ','.join(str(int(id)) for id in iso_ids)
+    q_conds = ['t.iso_id IN (%s)' % iso_ids_list,]
+    if form.numin:
+        q_conds.append('nu>=%f' % form.numin)
+    if form.numax:
+        q_conds.append('nu<=%f' % form.numax)
+    if form.Swmin:
+        q_conds.append('Sw>=%e' % form.Swmin)
+    elif form.Amin:
+        q_conds.append('A>=%e' % form.Amin)
+    q_conds.append('p.name IN ("nu", "Sw", "gamma_air", "gamma_self",'\
+                             ' "n_air", "delta_air", "gamma_CO2",'\
+                             ' "delta_CO2")')
+    q_conds.append('valid_from <= "%s"' % form.valid_on.strftime('%Y-%m-%d'))
+    q_conds.append('valid_to > "%s"' % form.valid_on.strftime('%Y-%m-%d'))
+
+    q_fields = ['t.id', 't.iso_id',
+            'GROUP_CONCAT(p.name, "=", p.val)',
+            'GROUP_CONCAT(p.name, "=", p.source_id)']
+    q_from = 'hitranlbl_trans t INNER JOIN hitranlbl_prm p ON p.trans_id=t.id'
+               
+    q_where = ' AND '.join(q_conds)
+    query = 'SELECT %s FROM %s WHERE %s GROUP BY t.id order by t.nu'\
+                 % (','.join(q_fields), q_from, q_where)
+    print query
+
+    search_summary = {'summary_html':
+                '<p>Here are the results of the query in '\
+                ' testCO2 format</p>'}
+
+    # here's where we do the rawest of the raw SQL query
+    from django.db import connection, transaction
+    cursor = connection.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    ntrans = len(rows)
+    te = time.time()
+    print 'time to get transitions = %.1f secs' % (te - start_time)
+
+    ts = time.time()
+    filestem = get_filestem()
+    output_files = write_testCO2(filestem, form, rows)
+    te = time.time()
+    print 'time to write transitions = %.1f secs' % (te - ts)
+
+    # strip path from output filenames:
+    output_files = [os.path.basename(x) for x in output_files]
+
+    end_time = time.time()
+        
+    search_summary['ntrans'] = ntrans
+    search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
+
+    return output_files, search_summary 
+
+def write_testCO2(filestem, form, rows):
+    outpath = os.path.join(settings.RESULTSPATH, '%s-trans.txt' % filestem)
+    fo = open(outpath, 'w')
+
+    if form.default_entry == '-1':
+        default_Epp = '   -1.0000'
+        default_gp = '   -1'
+    else:
+        default_Epp = form.default_entry * 10
+        default_gp = form.default_entry * 5
+
+    source_ids = set()
+    for row in rows:
+        #try:
+        #    s_gamma_air = '%6.4f' % row[4]
+        #except TypeError:
+        #    s_gamma_air = ' '*6
+        #try:
+        #    s_n_air = '%7.4f' % row[5]
+        #except TypeError:
+        #    s_n_air = ' '*7
+        #try:
+        #    s_delta_air = '%9.4f' % row[6]
+        #except TypeError:
+        #    s_delta_air = ' '*9
+
+        # parameter values
+        prms = row[2].split(',')
+        # NB the defaults for these parameters are 0.
+        nu = -1.
+        Sw = -1.
+        gamma_air = 0.
+        gamma_self = 0.
+        n_air = 0.
+        delta_air = 0.
+        gamma_CO2 = 0.
+        delta_CO2 = 0.
+        #print prms
+        for prm in prms:
+            prm_name, prm_val = prm.split('=')
+            exec('%s=float(prm_val)' % prm_name)
+        # parameter sources
+        try:
+            prm_refs = row[3].split(',')
+        except AttributeError:  # Oops: prm_refs is None
+            prm_refs = []
+        # XXX sort out the default character thing later...
+        gamma_CO2_ref = 0
+        delta_CO2_ref = 0
+        for prm in prm_refs:
+            prm_name, prm_ref = prm.split('=')
+            i_prm_ref = int(prm_ref)
+            exec('%s_ref=i_prm_ref' % prm_name)
+            source_ids.add(i_prm_ref)
+
+        s_gamma_air = '%6.4f' % gamma_air
+        if s_gamma_air == '0.0000':
+            s_gamma_air = ' '*6
+        s_n_air = '%7.4f' % n_air
+        if s_n_air == ' 0.0000':
+            s_n_air = ' '*7
+        s_delta_air = '%9.6f' % delta_air
+        if s_delta_air == ' 0.000000':
+            s_delta_air = ' '*9
+
+        print >>fo, '15 %3d %12.6f %10.3e '\
+                    '%6s %7s %6.4f %9s CO2:'\
+                    '%6.4f[%4d] %9.6f[%4d]'\
+            % (row[1],
+               nu, Sw,
+               s_gamma_air, s_n_air, gamma_self, s_delta_air,
+               gamma_CO2, gamma_CO2_ref, delta_CO2, delta_CO2_ref)
     fo.close()
 
     sourcespath = os.path.join(settings.RESULTSPATH, '%s-sources.html'

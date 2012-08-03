@@ -54,6 +54,7 @@ class Iso(models.Model):
     iso_name = models.CharField(max_length=100)
     iso_name_html = models.CharField(max_length=500)
     abundance = models.FloatField(null=True, blank=True)
+    mass = models.FloatField(null=True, blank=True)
     afgl_code = models.CharField(max_length=10, null=True, blank=True)
     # CML representation of the species, with all isotopeNumbers
     # specified explicitly:
@@ -180,6 +181,9 @@ class OutputCollection(models.Model):
     name = models.CharField(max_length=50)
     output_fields = models.ManyToManyField(OutputField,
                                            through='OutputFieldOrder')
+
+    def ordered(self):
+        return self.output_fields.order_by('outputfieldorder__position')
 
     def __unicode__(self):
         return self.name

@@ -25,6 +25,7 @@ class OutputCollectionAdmin(admin.ModelAdmin):
 admin.site.register(OutputCollection, OutputCollectionAdmin)
 
 class OutputFieldOrderAdmin(admin.ModelAdmin):
+    ordering = ['output_collection', 'position']
     pass
 admin.site.register(OutputFieldOrder, OutputFieldOrderAdmin)
 

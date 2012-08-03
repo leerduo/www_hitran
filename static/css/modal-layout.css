@@ -12,10 +12,12 @@
 .modal_window{  
     position:absolute; /* important so we can centre it later */  
     display:none;
-    color: #000;  
+    color: #000;
     background: #fff;
+    background-color: rgba(255,255,255,1.0);
     width: 25%; height: 50%;
     border: 1px solid black;  
     padding:50px;  
+    z-index: 1000;  /* make sure the modal window is right on top */
 }  
   

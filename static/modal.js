@@ -42,16 +42,46 @@ function close_modal() {
         s += ','+isoID;
     }
     alert("isos:"+s);*/
-    select_molecule = false;
-    for (var isoID in isoIDs[this_molecule]) {
+    /* select_molecule is to be:
+        0 if no isotopologues have been ticked,
+        1 if some but not all isotopologues have been ticked, or
+        2 if all isotopologues have been ticked
+    */
+    select_molecule = 0;
+    all_isos_checked = true;
+    for (var i in isoIDs[this_molecule]) {
+        isoID = isoIDs[this_molecule][i];
         var cbx = $('#'+modal_id).find('.isocheckbox_'+isoID);
+        //alert("cbx for modal_id="+modal_id+", isoID="+isoID+" is "+ cbx);
         if (cbx.attr('checked')) {
-            select_molecule = true;
+            select_molecule = 1;
+        } else {
+            all_isos_checked = false;
         }
     }
-    alert("select the molecule? "+select_molecule);
-    //var cbx = $('#isos_6_window').find('.isocheckbox_33');
-    //alert("cbx-6-34:" + cbx.attr('value') + cbx.attr('checked'));
+    if (all_isos_checked) {
+        select_molecule = 2;
+    }
+    //alert("select the molecule? "+select_molecule);
+    var molec_cbx = $('#molec'+this_molecule);
+    //alert("molec_cbx.checked = " + molec_cbx.attr('checked','checked'));
+    if (select_molecule == 0) {
+        // no isotopologues have been selected: untick the molecule's checkbox
+        molec_cbx.removeAttr('checked');
+        // and remove any grey-colouring
+        molec_cbx.removeAttr('class');
+    } else {
+        // at least one isotopologue has been selected: tick the molecule's box
+        molec_cbx.attr('checked','checked');
+        if (select_molecule == 1) {
+            // only some of the isotopologues have been selected: leave the
+            // molecule's checkbox ticked, but set it to a grey colour
+            molec_cbx.attr({'class': 'some_selected'});
+        } else {
+            // if all isotopologues are selected, remove grey colouring
+            molec_cbx.removeAttr('class');
+        }
+    }
     //hide the mask  
     $('#mask').fadeOut(250);  
     //hide modal window(s)  

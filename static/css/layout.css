@@ -64,3 +64,9 @@ h1 {
 .error_msg {
     color: #f00;
 }
+
+.some_selected {
+    opacity: 0.5;
+    filter: alpha(opacity=50);
+}
+

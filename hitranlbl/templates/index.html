@@ -29,8 +29,13 @@ function select_all_molecules()
                 if (oCheckBox) {
                     oCheckBox.checked = true;
                 }
+                oCheckBox.className = '';
             }
 		}
+        // set all isotopologues' checkboxes to ticked
+        $('#SearchForm input[name=iso]').each(function () { 
+            $(this).attr('checked', 'checked') 
+        });
 		oSelectButton.value = "Select None";
 	} else {
 		for (var i in oElements) {
@@ -39,8 +44,13 @@ function select_all_molecules()
                 if (oCheckBox) {
                     oCheckBox.checked = false;
                 }
+                oCheckBox.className = '';
             }
 		}
+        // set all isotopologues' checkboxes to unticked
+        $('#SearchForm input[name=iso]').each(function () { 
+            $(this).removeAttr('checked')
+        });
 		oSelectButton.value = "Select All";
 	}
 }
@@ -57,7 +67,12 @@ function select_first_seven()
             if (oCheckBox) {
                 oCheckBox.checked = true;
             }
+            oCheckBox.className = '';
             iMolec += 1;
+            // set all isotopologues' checkboxes for this molecule to ticked
+            $('#isos_'+iMolec+'_window input[name=iso]').each(function () {
+                $(this).attr('checked', 'checked')
+            });
         }
         if (iMolec == 7) {
             break;
@@ -86,12 +101,14 @@ function molecule_checkbox(oCheckBox)
     var molecID = oCheckBox.value;
     var isos_div_id = "isos_"+molecID+"_window";
     var oIsosDiv = document.getElementById(isos_div_id);
-    alert(isos_div_id);
+    //alert(isos_div_id);
     var oIsoCheckBoxes = oIsosDiv.getElementsByTagName("input");
     // check or uncheck all isotopologues for this molecule
     for (var i in oIsoCheckBoxes) {
         oIsoCheckBoxes[i].checked = oCheckBox.checked;
     }
+    // clear any greying due to partially-selected isotopologues
+    oCheckBox.className = '';
 }
 
 /* when the requested wavenumber/wavelength search units are changed,
@@ -205,7 +222,7 @@ function load_output_fields_html()
 {
     {% for output_collection in output_collections.all %}
         field_html = '<table>'
-        {% for output_field in output_collection.output_fields.all %}
+        {% for output_field in output_collection.ordered %}
             field_html += '<tr class="{% cycle 're' 'ro' %}"><td>{{ output_field.name_html|safe }}</td><td class="desc"> {{ output_field.desc_html|safe }}</td></tr>'
         {% endfor %}
         field_html += '</table>'
@@ -230,7 +247,7 @@ function initialize_page()
 
 <h1>HITRAN line-by-line search</h1>
 
-<form name="SearchForm" method="POST">{% csrf_token %}
+<form name="SearchForm" id="SearchForm" method="POST">{% csrf_token %}
 
 <!-- isotopologue modal windows -->
 <div id="mask" class="close_modal"></div>
@@ -247,6 +264,7 @@ function initialize_page()
 </tr>
 {% endfor %}
 </table>
+<input value="Done" type="button" onclick="JavaScript:close_modal()"/>
 </div>
 {% endfor %}
 
@@ -269,7 +287,7 @@ function initialize_page()
 <tr>
 {% for molecule in present_molecules %}
 {% if forloop.counter0|divisibleby:4 %}</tr><tr>{% endif %}
-<td><input type="checkbox" name="molecule" onchange="JavaScript:molecule_checkbox(this)" value="{{ molecule.molecID }}"/>
+<td><input type="checkbox" name="molecule" onchange="JavaScript:molecule_checkbox(this)" value="{{ molecule.molecID }}" id="molec{{ molecule.molecID }}"/>
 &nbsp;
 <a class="activate_modal" name="isos_{{ molecule.molecID }}_window" href="#">{{ molecule.ordinary_formula_html|safe }}</a>
 </td>
