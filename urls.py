@@ -9,8 +9,8 @@ urlpatterns = patterns('',
     # Examples:
     # url(r'^$', 'HITRAN.views.home', name='home'),
     url(r'^HITRAN/lbl/$', 'HITRAN.hitranlbl.views.index'),
-    url(r'^HITRAN/cia/$', 'HITRAN.hitrancia.views.index'),
-    url(r'^HITRAN/xsc/$', 'HITRAN.hitranxsc.views.index'),
+    #url(r'^HITRAN/cia/$', 'HITRAN.hitrancia.views.index'),
+    #url(r'^HITRAN/xsc/$', 'HITRAN.hitranxsc.views.index'),
 
     # Uncomment the admin/doc line below to enable admin documentation:
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),

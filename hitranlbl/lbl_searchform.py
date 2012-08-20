@@ -120,15 +120,33 @@ class LblSearchForm:
         self.selected_isoIDs = selected_isoIDs
             
 
-        # don't allow any shenanigans with the default entries
+        # don't allow any shenanigans with the default entries or field
+        # separators
         default_entries = {'whitespace': ' ', 'asterisk': '*',
                            'minus1': '-1', 'hash': '#'}
+        field_separators = {'none': '', 'tab': '\t', 'space': ' ',
+                            'comma': ',', 'semicolon': ';', 'colon': ':'}
         try:
             self.default_entry = default_entries[post_data.get(
                                                     'default_entry')]
         except KeyError:
             self.error_msg = '<p class="error_msg">Invalid default entry</p>'
             return
+        try:
+            self.field_separator = field_separators[post_data.get(
+                                                        'field_separator')]
+        except KeyError:
+            self.error_msg = '<p class="error_msg">Invalid field separator</p>'
+            return
+
+        output_sources = post_data.getlist('output_sources')
+        self.output_html_sources = self.output_bibtex_sources = False
+        if 'html' in output_sources:
+            self.output_html_sources = True
+        if 'bibtex' in output_sources:
+            self.output_bibtex_sources =  True
+        self.output_sources = self.output_html_sources\
+                            | self.output_bibtex_sources
 
         self.error_msg = ''
         self.valid = True

@@ -1,16 +1,20 @@
 from django.contrib import admin
-from HITRAN.hitranmeta.models import Ref, OutputField, OutputCollection,\
+from HITRAN.hitranmeta.models import OutputField, OutputCollection,\
                                      Source, NucSpins, OutputFieldOrder,\
-                                     Iso, RefsMap
+                                     Iso, RefsMap, PrmDesc
 
 class IsoAdmin(admin.ModelAdmin):
     pass
 admin.site.register(Iso, IsoAdmin)
 
-class RefAdmin(admin.ModelAdmin):
-    ordering = ['id','refID']
-    search_fields = ['authors', 'title']
-admin.site.register(Ref, RefAdmin)
+class PrmDescAdmin(admin.ModelAdmin):
+    pass
+admin.site.register(PrmDesc, PrmDescAdmin)
+
+#class RefAdmin(admin.ModelAdmin):
+#    ordering = ['id','refID']
+#    search_fields = ['authors', 'title']
+#admin.site.register(Ref, RefAdmin)
 
 class RefsMapAdmin(admin.ModelAdmin):
     ordering = ['id','refID']
@@ -40,6 +44,3 @@ admin.site.register(Source, SourceAdmin)
 class NucSpinsAdmin(admin.ModelAdmin):
     pass
 admin.site.register(NucSpins, NucSpinsAdmin)
-    
-
-

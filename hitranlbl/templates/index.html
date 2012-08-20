@@ -86,11 +86,11 @@ function select_first_seven()
 var isoIDs = new Array();
 function get_iso_ids()
 {
-isoIDs[0] = ''; // no molecID=0
+isoIDs[0] = ''; // no molecule_id=0
 {% for molecule in present_molecules %}
-    isoIDs[{{ molecule.molecID }}] = new Array()
+    isoIDs[{{ molecule.id }}] = new Array()
     {% for iso in molecule.iso_set.all %}
-        isoIDs[{{ molecule.molecID }}].push({{ iso.id }});
+        isoIDs[{{ molecule.id }}].push({{ iso.id }});
     {% endfor %}
 {% endfor %}
 }
@@ -187,12 +187,15 @@ function change_output_collection()
     collectionID = document.SearchForm.elements["output_collection"].value;
     update_output_formats(collectionID);
     default_entries = document.getElementById("default_entries");
-    /* set the default entry pull-down box to visible, only if the collection
-       selected is NOT a native HITRAN format */
+    field_separator = document.getElementById("field_separator");
+    /* set the default entry and field separator pull-down boxes to visible,
+       only if the collection selected is NOT a native HITRAN format */
     if (collectionID == HITRAN_collectionID) {
         default_entries.style.visibility = 'hidden';
+        field_separator.style.visibility = 'hidden';
     } else {
         default_entries.style.visibility = 'visible';
+        field_separator.style.visibility = 'visible';
     }
 }
 
@@ -252,7 +255,7 @@ function initialize_page()
 <!-- isotopologue modal windows -->
 <div id="mask" class="close_modal"></div>
 {% for molecule in present_molecules %}
-<div id="isos_{{ molecule.molecID }}_window" name="{{ molecule.molecID }}" class="modal_window">
+<div id="isos_{{ molecule.id }}_window" name="{{ molecule.id }}" class="modal_window">
 <h4>Select the required isotopologues of {{ molecule.ordinary_formula_html|safe }}</h4>
 <table>
 {% for iso in molecule.iso_set.all %}
@@ -287,9 +290,9 @@ function initialize_page()
 <tr>
 {% for molecule in present_molecules %}
 {% if forloop.counter0|divisibleby:4 %}</tr><tr>{% endif %}
-<td><input type="checkbox" name="molecule" onchange="JavaScript:molecule_checkbox(this)" value="{{ molecule.molecID }}" id="molec{{ molecule.molecID }}"/>
+<td><input type="checkbox" name="molecule" onchange="JavaScript:molecule_checkbox(this)" value="{{ molecule.id }}" id="molec{{ molecule.id }}"/>
 &nbsp;
-<a class="activate_modal" name="isos_{{ molecule.molecID }}_window" href="#">{{ molecule.ordinary_formula_html|safe }}</a>
+<a class="activate_modal" name="isos_{{ molecule.id }}_window" href="#">{{ molecule.ordinary_formula_html|safe }}</a>
 </td>
 {% endfor %}
 </tr>
@@ -332,6 +335,9 @@ function initialize_page()
 <td><input type="text" name="valid_on" id="valid_on_date"/></td>
 </tr>
 
+<tr><td colspan="3" style="text-align: center;">
+<input type="submit" value="Submit Query"/>
+</td></tr>
 </table>
 
 </div> <!-- lblsearch_left_panel -->
@@ -363,15 +369,30 @@ function initialize_page()
 </select>
 </p>
 </div>
+<div id="field_separator">
+<p>Field separator:
+<select name="field_separator">
+    <option value="none">[none]</option>
+    <option value="tab">[tab]</option>
+    <option value="space">[space]</option>
+    <option value="comma">,</option>
+    <option value="semicolon">;</option>
+    <option value="colon">:</option>
+</select>
+</p>
+</div>
+
+<p>
+Output data source citations:<br/>
+HTML <input type="checkbox" name="output_sources" value="html"/> BibTeX <input type="checkbox" name="output_sources" value="bibtex"/>
+</p>
 
 <!--<p><input type="checkbox" name="get_states" value="yes"/>&nbsp;Retrieve states in separate file</p>-->
 
 </div> <!-- lblsearch_right_panel -->
 
-<!-- the 'Submit Query' button -->
 <div style="clear: both; width: 200px; margin: auto;">
 <br/><br/>
-<input type="submit" value="Submit Query"/>
 </div>
 
 </div> <!-- content -->

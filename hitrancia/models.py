@@ -42,7 +42,7 @@ class CIA(models.Model):
     molecule2 = models.ForeignKey('hitranmeta.molecule',
                                   related_name='cia_molecule2_set')
     collision_pair = models.ForeignKey(CollisionPair)
-    ref = models.ForeignKey('hitranmeta.ref', blank=True, null=True)
+    #ref = models.ForeignKey('hitranmeta.ref', blank=True, null=True)
     desc = models.TextField(blank=True, null=True)
     valid_from = models.DateField()
     # the default is for this data 'never' to expire:

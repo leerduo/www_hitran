@@ -1,6 +1,7 @@
 from django.db import models
 import re
 import datetime
+import bibtex_output
 
 ref_patt = 'Ref\.\s\[(\d+)\]'
 def i2chr(i):
@@ -13,9 +14,8 @@ def i2chr(i):
         return '?'
     return chr(i+97)
 
-
 class Molecule(models.Model):
-    molecID = models.IntegerField(primary_key=True, unique=True)
+    id = models.IntegerField(primary_key=True, unique=True)
     molecID_str = models.CharField(max_length=40)
     InChI = models.CharField(max_length=200, unique=True)
     InChIKey = models.CharField(max_length=27, unique=True)
@@ -44,10 +44,6 @@ class MoleculeName(models.Model):
 class Iso(models.Model):
     isoID = models.IntegerField()
     isoID_str = models.CharField(max_length=50)
-    InChI_explicit = models.CharField(max_length=200, null=True, blank=True,
-                                      unique=True)
-    InChIKey_explicit = models.CharField(max_length=27, null=True, blank=True,
-                                         unique=True)
     InChI = models.CharField(max_length=200, unique=True)
     InChIKey = models.CharField(max_length=27, unique=True)
     molecule = models.ForeignKey('Molecule')
@@ -56,9 +52,6 @@ class Iso(models.Model):
     abundance = models.FloatField(null=True, blank=True)
     mass = models.FloatField(null=True, blank=True)
     afgl_code = models.CharField(max_length=10, null=True, blank=True)
-    # CML representation of the species, with all isotopeNumbers
-    # specified explicitly:
-    cml_explicit = models.TextField(null=True, blank=True)
     # CML representation of the species with only the essential (ie
     # not maximum abundance, apart from Br) isotopeNumbers specified:
     cml = models.TextField(null=True, blank=True)
@@ -88,49 +81,21 @@ class Case(models.Model):
     class Meta:
         app_label='hitranmeta'
 
-class Ref(models.Model):
-    # unique ID for this reference
-    refID = models.CharField(max_length=100)
-    # reference type (e.g. 'article', 'private communication')
-    ref_type = models.CharField(max_length=50, )
-    # a list of the authors' names in a string as:
-    # 'A.N. Other, B.-C. Person Jr., Ch. Someone-Someone, N.M.L. Haw Haw'
-    authors = models.TextField(null=True, blank=True)
-    # the article, book, or thesis title
-    title = models.TextField(null=True, blank=True)
-    # the title as HTML
-    title_html = models.TextField(null=True, blank=True)
-    # the journal name
-    journal = models.CharField(max_length=500, null=True, blank=True)
-    # the volume (which may be a string)
-    volume = models.CharField(max_length=10, null=True, blank=True)
-    # the first page (which may be a string e.g. 'L123')
-    page_start = models.CharField(max_length=10, null=True, blank=True)
-    # the last page
-    page_end = models.CharField(max_length=10, null=True, blank=True)
-    # the year of publication, creation, or communication
-    year = models.IntegerField(null=True, blank=True)
-    # the institution name, if relevant and available
-    institution = models.CharField(max_length=500, null=True, blank=True)
-    # a note, perhaps containing cross-references of ref_id inside
-    # square brackets
-    note = models.TextField(null=True, blank=True)
-    # the note as HTML
-    note_html = models.TextField(null=True, blank=True)
-    # the Digital Object Identifier, if available
-    doi = models.CharField(max_length=100, null=True, blank=True)
-    # a string of HTML to be output on websites citing this reference
-    cited_as_html = models.TextField()
-    # a URL to the source, if available
-    url = models.TextField(null=True, blank=True)
-
-    source_id = models.IntegerField(null=True, blank=True)
-
+class PrmDesc(models.Model):
+    # parameter name as a valid Python attribute name
+    name = models.CharField(max_length=20)
+    # parameter name in HTML format
+    name_html = models.CharField(max_length=100)
+    # text description of parameter
+    description = models.TextField()
+    # HTML description of parameter
+    description_html = models.TextField()
     def __unicode__(self):
-        return self.refID
-
+        return self.name
+    
     class Meta:
         app_label='hitranmeta'
+        db_table = 'hitranmeta_prmdesc'
 
 class PartitionFunction(models.Model):
     # the isotopologue that this partition function belongs to
@@ -204,7 +169,6 @@ class OutputFieldOrder(models.Model):
         app_label='hitranmeta'
         ordering = ['position']
 
-#########################
 class SourceMethod(models.Model):
     method_name = models.CharField(max_length=32)
     def __unicode__(self):
@@ -232,8 +196,6 @@ class RefsMap(models.Model):
         app_label = 'hitranmeta'
 
 class Source(models.Model):
-    # unique ID for this reference
-    refID = models.CharField(max_length=100)
     # reference type (e.g. 'article', 'private communication')
     source_type = models.ForeignKey('SourceType')
     # a list of the authors' names in a string as:
@@ -268,7 +230,7 @@ class Source(models.Model):
     url = models.TextField(null=True, blank=True)
     # method: e.g. 'experimental', 'theory', 'extrapolation', 'guess'
     method = models.ForeignKey('SourceMethod')
-    # article number, used instead of page number for e.g. J. Chem. Phys. papers
+    # article number, used instead of page number for e.g. J.Chem.Phys. papers
     article_number = models.CharField(max_length=16, null=True, blank=True)
     # source_list refers to a table giving the one-to-many relationship for a
     # Source note which cites (possibly more than one) sources
@@ -277,17 +239,20 @@ class Source(models.Model):
     
     def __unicode__(self):
         if self.source_type.source_type == 'article':
-            return '%d: %s: %s, %s' % (self.id, self.refID, self.authors,
+            return '%d: %s, %s' % (self.id, self.authors,
                                        self.title)
         elif self.source_type.source_type in ('note', 'private communication'):
-            return '%d: %s: %s, %s' % (self.id, self.refID, self.authors,
+            return '%d: %s, %s' % (self.id, self.authors,
                                        self.note)
         else:
-            return '%d: %s: %s, %s' % (self.id, self.refID, self.authors,
+            return '%d: %s, %s' % (self.id, self.authors,
                                        self.title)
 
     class Meta:
         app_label='hitranmeta'
+
+    def bibtex(self):
+        return bibtex_output.bibtex_output(self)
 
     def html(self, sublist=False, s_refid=None):
         if s_refid is None:
@@ -339,10 +304,13 @@ class Source(models.Model):
         s_year = ''
         if self.year:
             s_year = ' (%s)' % (str(self.year))
+        s_url = ''
+        if self.url:
+            s_url = ' [<a href="%s">link to article</a>]' % self.url
 
-        s = '%s, %s, <em>%s</em>%s%s%s.'\
+        s = '%s, %s, <em>%s</em>%s%s%s.%s'\
                 % (s_authors, s_title, s_journal, s_volume,
-                   s_pages, s_year)
+                   s_pages, s_year, s_url)
         return s
 
     def html_note(self, sublist, relabel=True):

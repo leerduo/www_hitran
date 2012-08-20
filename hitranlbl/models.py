@@ -32,13 +32,15 @@ class State(models.Model):
         try:
             s_g = '%5d' % self.g
         except TypeError:
-            s_g = ''
+            # degeneracy undefined (self.g is None)
+            s_g = ' '*5
         try:
             s_E = '%10.4f' % self.energy
         except TypeError:
-            s_E = ''
-        return '%2d%1d%s%s%s' % (self.iso.molecule.molecID,
-            self.iso.isoID, s_E, s_g, self.s_qns)
+            # energy undefined (self.energy is None)
+            s_E = ' '*10
+        return '%4d %s %s %s' % (self.iso.id, s_E,
+                                     s_g, self.s_qns)
 
 class Trans(models.Model):
     iso = models.ForeignKey('hitranmeta.iso')
@@ -66,7 +68,6 @@ class Prm(models.Model):
     val = models.FloatField()
     err = models.FloatField(blank=True, null=True)
     ierr = models.IntegerField(blank=True, null=True)
-    ref = models.ForeignKey('hitranmeta.ref', blank=True, null=True)
     source = models.ForeignKey('hitranmeta.source', blank=True, null=True)
     method = models.IntegerField(blank=True, null=True)
     

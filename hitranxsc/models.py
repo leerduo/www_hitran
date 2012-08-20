@@ -13,7 +13,7 @@ class Xsc(models.Model):
     res = models.FloatField(blank=True, null=True)
     res_units = models.CharField(max_length=10) # cm-1 or mA for milliAngstroms
     broadener = models.CharField(max_length=10, blank=True, null=True)
-    ref = models.ForeignKey('hitranmeta.ref', blank=True, null=True)
+    #ref = models.ForeignKey('hitranmeta.ref', blank=True, null=True)
     desc = models.TextField(blank=True, null=True)
     valid_from = models.DateField()
     # the default is for this data 'never' to expire:
