@@ -266,23 +266,6 @@ def write_atmos_min(filestem, rows, form):
 
     return output_file_list
 
-
-def write_sources(form, filestem, source_ids):
-    sources_file_list = []
-    if form.output_html_sources:
-        sources_html_path = os.path.join(settings.RESULTSPATH,
-                                '%s-sources.html' % filestem)
-        write_sources_html(sources_html_path, source_ids)
-        sources_file_list.append(sources_html_path)
-        
-    if form.output_bibtex_sources:
-        sources_bib_path = os.path.join(settings.RESULTSPATH,
-                                '%s-sources.bib' % filestem)
-        write_sources_bibtex(sources_bib_path, source_ids)
-        sources_file_list.append(sources_bib_path)
-    return sources_file_list
-
-
 def do_search_slow(form):
     start_time = time.time()
 
@@ -421,16 +404,20 @@ def do_search_par(form):
     search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
 
     if form.output_sources:
-        source_ids = get_source_ids(par_lines)
-        source_files = write_sources(form, filestem, source_ids)
-        output_file_list.extend(source_files)
+        # to output sources by source_id:
+        #source_ids = get_source_ids(par_lines)
+        #source_files = write_sources(form, filestem, source_ids)
+        #output_file_list.extend(source_files)
+        refIDs = get_refIDs(par_lines)
+        ref_files = write_refs(form, filestem, refIDs)
+        output_file_list.extend(ref_files)
 
     # strip path from output filenames:
     output_file_list = [os.path.basename(x) for x in output_file_list]
 
     return output_file_list, search_summary
 
-def get_source_ids(par_lines):
+def get_refIDs(par_lines):
     molecules = Molecule.objects.all().order_by('id')
     safe_molecule_names = [None]
     for molecule in molecules:
@@ -447,13 +434,17 @@ def get_source_ids(par_lines):
         refs_set[4].add((par_line[:2], par_line[141:143]))  # n_air
         refs_set[5].add((par_line[:2], par_line[143:145]))  # delta_air
     refIDs = []
-    for i,prm_name in enumerate(['nu', 'Sw', 'gamma_air', 'gamma_self',
+    for i,prm_name in enumerate(['nu', 'S', 'gamma_air', 'gamma_self',
                                  'n_air', 'delta_air']):
         for ref_set in refs_set[i]:
             molecule_id = int(ref_set[0])
             safe_molecule_name = safe_molecule_names[molecule_id]
             refIDs.append('%s-%s-%d' % (safe_molecule_name, prm_name,
                                         int(ref_set[1])))
+    return refIDs
+
+def get_source_ids(par_lines):
+    refIDs = get_refIDs(par_lines)
     refs_map = RefsMap.objects.all().filter(refID__in=refIDs)
     source_ids = [ref.source_id for ref in refs_map]
     return source_ids
@@ -468,6 +459,47 @@ def write_par(filestem, par_lines):
     fo.close()
     return [parpath,]
 
+def write_sources(form, filestem, source_ids):
+    """
+    Write sources identified by thier global source_ids within the
+    relational HITRAN database.
+
+    """
+
+    sources_file_list = []
+    if form.output_html_sources:
+        sources_html_path = os.path.join(settings.RESULTSPATH,
+                                '%s-sources.html' % filestem)
+        write_sources_html(sources_html_path, source_ids)
+        sources_file_list.append(sources_html_path)
+        
+    if form.output_bibtex_sources:
+        sources_bib_path = os.path.join(settings.RESULTSPATH,
+                                '%s-sources.bib' % filestem)
+        write_sources_bibtex(sources_bib_path, source_ids)
+        sources_file_list.append(sources_bib_path)
+    return sources_file_list
+
+def write_refs(form, filestem, refIDs):
+    """
+    Write sources identified by their native HITRAN labels,
+    <molec_name>-<prm_name>-<id>.
+
+    """
+
+    refs_file_list = []
+    if form.output_html_sources:
+        refs_html_path = os.path.join(settings.RESULTSPATH,
+                                '%s-refs.html' % filestem)
+        write_refs_html(refs_html_path, refIDs)
+        refs_file_list.append(refs_html_path)
+        
+    if form.output_bibtex_sources:
+        refs_bib_path = os.path.join(settings.RESULTSPATH,
+                                '%s-refs.bib' % filestem)
+        write_refs_bibtex(refs_bib_path, refIDs)
+        refs_file_list.append(refs_bib_path)
+    return refs_file_list
 
 def write_sources_html(sources_html_path, source_ids):
     fo = open(sources_html_path, 'w')
@@ -492,20 +524,74 @@ def write_sources_bibtex(sources_bib_path, source_ids):
     # we need all the source_ids, even those belonging to sources cited
     # within notes, etc.
     all_source_ids = set(source_ids)
-    ref_patt = 'Ref\.\s\[(\d+)\]'
     for source in Source.objects.filter(pk__in=source_ids):
         subsources = source.source_list.all()
         for subsource in subsources:
             all_source_ids.add(subsource.id)
-        #s_allrefids = re.findall(ref_patt, source.note)
-        #for s_refid in s_allrefids:
-        #    all_source_ids.add(int(s_refid))
 
     fo = open(sources_bib_path, 'w')
     for source_id in sorted(list(all_source_ids)):
         source = Source.objects.get(pk=source_id)
         print >>fo, unicode(source.bibtex()).encode('utf-8')
         print >>fo
+    fo.close()
+
+def write_refs_html(refs_html_path, refIDs):
+    #refs_map = RefsMap.objects.all().filter(refID__in=refIDs)
+    #source_ids = [ref.source_id for ref in refs_map]
+
+    fo = open(refs_html_path, 'w')
+    print >>fo, '<html><head>'
+    print >>fo, '<link rel="stylesheet" href="sources.css" type="text/css"'\
+                ' media="screen"/>'
+    print >>fo, '<link rel="stylesheet" href="sources_print.css"'\
+                ' type="text/css" media="print"/>'
+    print >>fo, '<meta charset="utf-8"/>'
+    print >>fo, '</head><body>'
+
+    print >>fo, '<div>'
+    for refID in sorted(refIDs):
+        try:
+            source_id = RefsMap.objects.get(refID=refID).source_id
+        except RefsMap.DoesNotExist:
+            if refID.endswith('-0'):
+                # missing sources with refID = <molec_name>-<prm_name>-0
+                # default to HITRAN86 paper:
+                source_id = 1
+            else:
+                raise
+        source = Source.objects.get(pk=source_id)
+        print >>fo, '<p><span style="text-decoration: underline">%s</span>'\
+                    '<br/>%s</p>' % (unicode(refID).encode('utf-8'),
+                    unicode(source.html(sublist=True)).encode('utf-8'))
+    print >>fo, '<div>'
+    print >>fo, '</body></html>'
+    fo.close()
+
+def write_refs_bibtex(refs_bib_path, refIDs):
+    fo = open(refs_bib_path, 'w')
+    output_source_ids = []  # keep track of which sources we've output
+    for refID in sorted(refIDs):
+        try:
+            source_id = RefsMap.objects.get(refID=refID).source_id
+        except RefsMap.DoesNotExist:
+            if refID.endswith('-0'):
+                # missing sources with refID = <molec_name>-<prm_name>-0
+                # default to HITRAN86 paper:
+                source_id = 1
+            else:
+                raise
+        source = Source.objects.get(pk=source_id)
+        print >>fo, refID
+        print >>fo, unicode(source.bibtex()).encode('utf-8')
+        output_source_ids.append(source_id)
+        subsources = source.source_list.all()
+        for subsource in subsources:
+            # only output subsources if we haven't done so already
+            if subsource.id not in output_source_ids:
+                print >>fo, refID
+                print >>fo, unicode(source.bibtex()).encode('utf-8')
+                output_source_ids.append(subsource.id)
     fo.close()
     
 search_routines = {

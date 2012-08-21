@@ -125,6 +125,6 @@ def bibtex_output(source):
     bib_bits = ['@%s{hitran-%d,\n' % (entry, source.id)]
     for field in fields[entry]:
         bib_bits.append(bibtex_field_makers[field](source))
-    bib_bits.append('}')
+    bib_bits.append('}\n')
     return ''.join(bib_bits)
 
