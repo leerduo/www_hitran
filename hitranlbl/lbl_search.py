@@ -569,9 +569,13 @@ def write_refs_html(refs_html_path, refIDs):
     fo.close()
 
 def write_refs_bibtex(refs_bib_path, refIDs):
-    fo = open(refs_bib_path, 'w')
-    output_source_ids = []  # keep track of which sources we've output
-    for refID in sorted(refIDs):
+
+    def get_source_id_from_refID(refID):
+        """
+        Get the source id (primary key to the hitranmeta_source row) from
+        the HITRAN-style refID, <molec_name>-<prm_name>-<id>.
+
+        """
         try:
             source_id = RefsMap.objects.get(refID=refID).source_id
         except RefsMap.DoesNotExist:
@@ -581,17 +585,40 @@ def write_refs_bibtex(refs_bib_path, refIDs):
                 source_id = 1
             else:
                 raise
+        return source_id
+
+    def add_source_to_list(source_id, refID):
+        """
+        Add the refID to the list in the source_ids dictionary, keyed by
+        source_id. Return True if this source was added for the first time,
+        or False if refID was appended to the list of an existing source.
+
+        """
+        try:
+            source_ids[source_id].append(refID)
+            return False
+        except KeyError:
+            source_ids[source_id] = [refID,]
+            return True
+        except:
+            raise
+
+    fo = open(refs_bib_path, 'w')
+    source_ids = {}
+
+    for refID in sorted(refIDs):
+        source_id = get_source_id_from_refID(refID)
+        add_source_to_list(source_id, refID)
         source = Source.objects.get(pk=source_id)
-        print >>fo, refID
-        print >>fo, unicode(source.bibtex()).encode('utf-8')
-        output_source_ids.append(source_id)
         subsources = source.source_list.all()
-        for subsource in subsources:
-            # only output subsources if we haven't done so already
-            if subsource.id not in output_source_ids:
-                print >>fo, refID
-                print >>fo, unicode(source.bibtex()).encode('utf-8')
-                output_source_ids.append(subsource.id)
+        for i, subsource in enumerate(subsources):
+            # add subsources with appended 'a', 'b', ...
+            add_source_to_list(subsource.id, refID + chr(i%26+97))
+
+    for source_id, refIDs_list in source_ids.items():
+        source = Source.objects.get(pk=source_id)
+        print >>fo, ', '.join(refIDs_list)
+        print >>fo, unicode(source.bibtex()).encode('utf-8')
     fo.close()
     
 search_routines = {
