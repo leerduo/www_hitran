@@ -205,6 +205,8 @@ class Source(models.Model):
     title = models.TextField(null=True, blank=True)
     # the title as HTML
     title_html = models.TextField(null=True, blank=True)
+    # the title as LaTeX
+    title_latex = models.TextField(null=True, blank=True)
     # the journal name
     journal = models.CharField(max_length=500, null=True, blank=True)
     # the volume (which may be a string)
@@ -222,6 +224,8 @@ class Source(models.Model):
     note = models.TextField(null=True, blank=True)
     # the note as HTML
     note_html = models.TextField(null=True, blank=True)
+    # the note as LaTeX
+    note_latex = models.TextField(null=True, blank=True)
     # the Digital Object Identifier, if available
     doi = models.CharField(max_length=100, null=True, blank=True)
     # a string of HTML to be output on websites citing this reference
