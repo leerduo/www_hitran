@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 # bibtex_output.py
+from latex_escape import escape
 
 entries = {'article': 'article',
            'note': 'misc',
@@ -38,7 +40,7 @@ def make_bibtex_author(source):
 def make_bibtex_title(source):
     if source.title is None:
         return ''
-    return 'title = {%s},\n' % source.title 
+    return 'title = {%s},\n' % source.title_latex 
 
 def make_bibtex_year(source):
     if source.year is None:
