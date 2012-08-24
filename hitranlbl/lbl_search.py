@@ -5,6 +5,7 @@ import re
 import time
 import datetime
 from hitranmeta.models import Molecule, Iso, Source, RefsMap
+from hitranlbl.models import State
 
 # map globally-unique isotopologue IDs to HITRAN molecID and isoID
 hitranIDs = [None,]    # no iso_id=0
@@ -34,11 +35,12 @@ def do_search_min(form):
     """
 
     start_time = time.time()
-    query_fields = ['iso_id', 'nu', 'Sw', 'Elower', 'gp']
+    query_fields = ['iso_id', 'nu', 'A', 'Elower', 'gp', 'gpp']
     query = make_simple_sql_query(form, query_fields)
 
     search_summary = {'summary_html':
-                '<p>Here are the results of the query in "min" format</p>'}
+            '<p>Here are the results of the query in "min" format.'\
+            ' Note that no data sources are output in this format</p>'}
 
     # here's where we do the rawest of the raw SQL query
     from django.db import connection, transaction
@@ -78,14 +80,14 @@ def write_min(filestem, rows, form):
     fo = open(outpath, 'w')
 
     s_fmt = form.field_separator.join(
-            ['%2d','%2d','%12.6f','%10.3e','%10s','%5s'])
+            ['%2d','%2d','%12.6f','%10.3e','%10s','%5s','%5s'])
 
     if form.default_entry == '-1':
         default_Epp = '   -1.0000'
-        default_gp = '   -1'
+        default_g = '   -1'
     else:
         default_Epp = form.default_entry * 10
-        default_gp = form.default_entry * 5
+        default_g = form.default_entry * 5
 
     for row in rows:
         iso_id = row[0]
@@ -97,18 +99,164 @@ def write_min(filestem, rows, form):
         try:
             s_gp = '%5d' % row[4]
         except TypeError:
-            s_gp = default_gp
+            s_gp = default_g
+        try:
+            s_gpp = '%5d' % row[4]
+        except TypeError:
+            s_gpp = default_g
 
         print >>fo, s_fmt % (
                     molecule_id,
                     local_iso_id,
                     row[1], # nu
-                    row[2], # Sw
+                    row[2], # A
                     s_Epp,
-                    s_gp)
+                    s_gp, s_gpp)
             
     fo.close()
     return [outpath,]
+
+def do_search_comprehensive(form):
+    start_time = time.time()
+    # just the isotopologue ids
+    iso_ids = Iso.objects.filter(pk__in=form.selected_isoIDs)\
+                                 .values_list('id', flat=True)
+
+    # NB protect against SQL injection when constructing the query
+    iso_ids_list = ','.join(str(int(id)) for id in iso_ids)
+
+    q_conds = get_basic_conditions(iso_ids_list, form)
+
+    q_fields = ['t.iso_id', 't.nu', 't.Elower', 't.gp', 't.gpp', 
+                'statep_id', 'statepp_id',
+                'GROUP_CONCAT(p.name, "=", p.val)',
+                'GROUP_CONCAT(p.name, "=", p.err)',
+                'GROUP_CONCAT(p.name, "=", p.source_id)']
+    q_from = 'hitranlbl_trans t INNER JOIN hitranlbl_prm p ON p.trans_id=t.id'
+               
+    q_where = ' AND '.join(q_conds)
+    query = 'SELECT %s FROM %s WHERE %s GROUP BY t.id'\
+                 % (','.join(q_fields), q_from, q_where)
+    
+    if settings.LIMIT is not None:
+        query = '%s LIMIT %d' % (query, settings.LIMIT)
+
+    summary_text = '<p>Here are the results of the query in "comprehensive"'\
+                   ' format</p>'
+    if settings.LIMIT is not None:
+        summary_text = '%s\n<p>The number of returned transitions has been'\
+                       ' limited to a maximum of %d'\
+                            % (summary_text, settings.LIMIT)
+    search_summary = {'summary_html': summary_text}
+          
+
+    # here's where we do the rawest of the raw SQL query
+    from django.db import connection, transaction
+    cursor = connection.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+
+    ntrans = len(rows)
+    te = time.time()
+    print 'time to get transitions = %.1f secs' % (te - start_time)
+
+    ts = time.time()
+    filestem = get_filestem()
+    output_files = write_comprehensive(filestem, rows, form)
+    te = time.time()
+    print 'time to write transitions = %.1f secs' % (te - ts)
+
+    # strip path from output filenames:
+    output_files = [os.path.basename(x) for x in output_files]
+
+    end_time = time.time()
+        
+    search_summary['ntrans'] = ntrans
+    search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
+
+    return output_files, search_summary
+
+def write_comprehensive(filestem, rows, form):
+    """
+    Write the output transitions file for the "comprehensive" output
+    collection.
+    The rows returned from the database query are:
+    iso_id, nu, Elower, gp, gpp, statep_id, statepp_id, [prm values],
+    [prm errors], [prm refs]
+
+    """
+
+    outpath = os.path.join(settings.RESULTSPATH, '%s-trans.txt' % filestem)
+    output_file_list = [outpath,]
+
+    fo = open(outpath, 'w')
+    s_fmt = form.field_separator.join(
+            ['%2d','%2d', '%4d', '%12.6f','%10s', '%5s', '%5s',
+             '%12d', '%12d', '%s', '%s', '%s'])
+
+    if form.default_entry == '-1':
+        default_Epp = '   -1.0000'
+        default_g = '   -1'
+    else:
+        default_Epp = form.default_entry * 10
+        default_g = form.default_entry * 5
+
+    source_ids = set()
+    state_ids = set()
+    for row in rows:
+        global_iso_id = row[0]
+        molecule_id, local_iso_id = hitranIDs[global_iso_id]
+        try:
+            s_Epp = '%10.4f' % row[2]
+        except TypeError:
+            s_Epp = default_Epp
+        try:
+            s_gp = '%5d' % row[3]
+        except TypeError:
+            s_gp = default_g
+        try:
+            s_gpp = '%5d' % row[4]
+        except TypeError:
+            s_gpp = default_g
+
+        statep_id = row[5]
+        statepp_id = row[6]
+        state_ids.add(statep_id)
+        state_ids.add(statepp_id)
+
+        # parameter values
+        prm_vals = row[7]
+        if prm_vals is None:
+            prm_vals = ''
+        prm_errs = row[8]
+        if prm_errs is None:
+            prm_errs = ''
+
+        try:
+            prm_refs = row[9]
+            for prm_ref in prm_refs.split(','):
+                prm_name, prm_ref_val = prm_ref.split('=')
+                source_id = int(prm_ref_val)
+                source_ids.add(source_id)
+        except AttributeError:
+            prm_refs = ''   # nothing in row[8]
+        
+        print >>fo, s_fmt % (
+                    molecule_id,
+                    local_iso_id,
+                    global_iso_id,
+                    row[1], # nu
+                    s_Epp,
+                    s_gp, s_gpp,
+                    statep_id, statepp_id,
+                    prm_vals, prm_errs, prm_refs
+                    )
+    fo.close()
+
+    output_file_list.extend(write_states(form, filestem, state_ids))
+    output_file_list.extend(write_sources(form, filestem, source_ids))
+
+    return output_file_list
 
 def do_search_atmos_min(form):
     start_time = time.time()
@@ -168,7 +316,7 @@ def write_atmos_min(filestem, rows, form):
     """
     Write the output transitions file for the "atmos-min" output collection.
     The rows returned from the database query are:
-    iso_id, nu, Sw, Elower, gp, gpp, [prm values], [prm errors] [prm refs]
+    iso_id, nu, Sw, Elower, gp, gpp, [prm values], [prm errors], [prm refs]
 
     """
 
@@ -417,6 +565,45 @@ def do_search_par(form):
 
     return output_file_list, search_summary
 
+def write_states(form, filestem, state_ids):
+    states_path = os.path.join(settings.RESULTSPATH,
+                               '%s-states.txt' % filestem)
+
+    fo = open(states_path, 'w')
+    s_fmt = form.field_separator.join(
+            ['%12d', '%4d', '%10s','%5s', '%1s', '%s'])
+
+    if form.default_entry == '-1':
+        default_energy = '   -1.0000'
+        default_g = '   -1'
+        default_nucspin_label = '?'
+    else:
+        default_energy = form.default_entry * 10
+        default_g = form.default_entry * 5
+        default_nucspin_label = form.default_entry
+
+    for state_id in state_ids:
+        state = State.objects.filter(pk=state_id).get()
+        global_iso_id = state.iso_id
+        energy = state.energy
+        try:
+            s_energy = '%10.4f' % energy
+        except TypeError:
+            s_energy = default_energy
+        try:
+            s_g = '%5d' % state.g
+        except TypeError:
+            s_g = default_g
+        if state.nucspin_label is None:
+            s_nucspin_label = default_nucspin_label
+        else:
+            s_nucspin_label = '%1s' % state.nucspin_label
+
+        print >>fo, s_fmt % (state.id, global_iso_id, s_energy, s_g,
+                             s_nucspin_label, state.s_qns)
+    fo.close()
+    return [states_path,]
+
 def get_refIDs(par_lines):
     molecules = Molecule.objects.all().order_by('id')
     safe_molecule_names = [None]
@@ -625,4 +812,5 @@ search_routines = {
         'HITRAN2004+': do_search_par,
         'min': do_search_min,
         'atmos-min': do_search_atmos_min,
+        'comprehensive': do_search_comprehensive,
 }
