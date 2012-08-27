@@ -50,7 +50,7 @@ def do_search_min(form):
 
     ntrans = len(rows)
     te = time.time()
-    print 'time to get transitions = %.1f secs' % (te - start_time)
+    print 'time to get %d transitions = %.1f secs' % (ntrans, (te-start_time))
 
     ts = time.time()
     filestem = get_filestem()
@@ -125,7 +125,8 @@ def do_search_comprehensive(form):
     # NB protect against SQL injection when constructing the query
     iso_ids_list = ','.join(str(int(id)) for id in iso_ids)
 
-    q_conds = get_basic_conditions(iso_ids_list, form)
+    q_conds = ['t.%s' % q_cond for q_cond in get_basic_conditions(
+                                            iso_ids_list, form)]
 
     q_fields = ['t.iso_id', 't.nu', 't.Elower', 't.gp', 't.gpp', 
                 'statep_id', 'statepp_id',
@@ -158,7 +159,7 @@ def do_search_comprehensive(form):
 
     ntrans = len(rows)
     te = time.time()
-    print 'time to get transitions = %.1f secs' % (te - start_time)
+    print 'time to get %d transitions = %.1f secs' % (ntrans, (te-start_time))
 
     ts = time.time()
     filestem = get_filestem()
@@ -267,7 +268,8 @@ def do_search_atmos_min(form):
     # NB protect against SQL injection when constructing the query
     iso_ids_list = ','.join(str(int(id)) for id in iso_ids)
 
-    q_conds = get_basic_conditions(iso_ids_list, form)
+    q_conds = ['t.%s' % q_cond for q_cond in get_basic_conditions(
+                                            iso_ids_list, form)]
     #params = ['nu', 'Sw', 'gamma_air', 'gamma_self', 'n_air', 'delta_air']
     #quoted_params = ', '.join(['"%s"' % prm_name for prm_name in params])
 
@@ -282,6 +284,7 @@ def do_search_atmos_min(form):
     q_where = ' AND '.join(q_conds)
     query = 'SELECT %s FROM %s WHERE %s GROUP BY t.id'\
                  % (','.join(q_fields), q_from, q_where)
+    print query
 
     search_summary = {'summary_html':
             '<p>Here are the results of the query in "atmos-min" format</p>'}
@@ -294,7 +297,7 @@ def do_search_atmos_min(form):
 
     ntrans = len(rows)
     te = time.time()
-    print 'time to get transitions = %.1f secs' % (te - start_time)
+    print 'time to get %d transitions = %.1f secs' % (ntrans, (te-start_time))
 
     ts = time.time()
     filestem = get_filestem()
@@ -538,7 +541,7 @@ def do_search_par(form):
 
     ntrans = len(par_lines)
     te = time.time()
-    print 'time to get transitions = %.1f secs' % (te - start_time)
+    print 'time to get %d transitions = %.1f secs' % (ntrans, (te-start_time))
 
     ts = time.time()
     filestem = get_filestem()
@@ -606,10 +609,12 @@ def write_states(form, filestem, state_ids):
 
 def get_refIDs(par_lines):
     molecules = Molecule.objects.all().order_by('id')
-    safe_molecule_names = [None]
+    safe_molecule_names = {}
     for molecule in molecules:
         safe_molecule_name = molecule.ordinary_formula.replace('+','p')
-        safe_molecule_names.append(safe_molecule_name)
+        safe_molecule_names[molecule.id] = safe_molecule_name
+    for i, smn in enumerate(safe_molecule_names):
+        print i, smn
     
     refs_set = [set(), set(), set(), set(), set(), set()]
     for par_line in par_lines:

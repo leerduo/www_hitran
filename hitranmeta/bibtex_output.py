@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # bibtex_output.py
-from latex_escape import escape
+from latex_escape import latex_escape
 
 entries = {'article': 'article',
            'note': 'misc',
@@ -15,7 +15,7 @@ entries = {'article': 'article',
           }
 
 fields = {'article': ['author', 'title', 'journal', 'year', 'volume',
-                       'pages', 'eid', 'doi', 'url'],
+                       'pages', 'eid', 'doi'],  # XXX url
            'misc': ['author', 'title', 'note', 'year', 'url'],
            'book': ['author', 'title', 'year'], # XXX publisher
            'inproceedings': ['author', 'title', 'year'],    # XXX booktitle?
@@ -26,7 +26,9 @@ fields = {'article': ['author', 'title', 'journal', 'year', 'volume',
 
 def make_bibtex_author(source):
     try:
-        author_list = source.authors.split(',')
+        s_authors = source.authors
+        s_authors = latex_escape(s_authors)
+        author_list = s_authors.split(',')
     except AttributeError:
         if source.source_type.source_type in ('note', 'database'):
             # authors not mandatory for note, database
@@ -71,7 +73,7 @@ def make_bibtex_pages(source):
     return 'pages = {unknown pages},\n'
     
 def make_bibtex_note(source):
-    s_note = source.note
+    s_note = source.note_latex
     if s_note is None:
         s_note = ''
     if source.source_type.source_type == 'private communication':
@@ -91,7 +93,8 @@ def make_bibtex_school(source):
 def make_bibtex_institution(source):
     if source.institution is None:
         return ''
-    return 'institution = {%s},\n' % source.institution
+    institution = latex_escape(source.institution)
+    return 'institution = {%s},\n' % institution
 
 def make_bibtex_doi(source):
     if not source.doi:
