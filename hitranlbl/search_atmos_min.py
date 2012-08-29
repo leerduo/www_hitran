@@ -3,24 +3,36 @@ import os
 import time
 from django.conf import settings
 from search_utils import get_basic_conditions, get_filestem, hitranIDs,\
+                         get_iso_ids_list, get_prm_defaults, set_field,\
                          write_sources
 from hitranmeta.models import Iso
 
 def do_search_atmos_min(form):
-    start_time = time.time()
-    # just the isotopologue ids
-    iso_ids = Iso.objects.filter(pk__in=form.selected_isoIDs)\
-                                 .values_list('id', flat=True)
+    """
+    Do the search for the "atmos_min" output collection, as a raw SQL query.
 
-    # NB protect against SQL injection when constructing the query
-    iso_ids_list = ','.join(str(int(id)) for id in iso_ids)
+    Arguments:
+    form: the Django-parsed Form object containing the parameters for the
+    search.
+
+    Returns:
+    output_file_list: a list of the names of files written to produce the
+    results of this search, stripped of any path information (ie basename
+    only; the files are assumed to have been put in the RESULTSPATH directory.
+
+    search_summary: a dictionary of stuff to pass to the search results
+    template, including search_summary - a text description of the format
+    the data is returned in.
+
+    """
+    start_time = time.time()
+
+    # get a comma-separated string comprising a list of the ids of the
+    # requested isotopologue
+    iso_ids_list = get_iso_ids_list(form)
 
     q_conds = ['t.%s' % q_cond for q_cond in get_basic_conditions(
                                             iso_ids_list, form)]
-    #params = ['nu', 'Sw', 'gamma_air', 'gamma_self', 'n_air', 'delta_air']
-    #quoted_params = ', '.join(['"%s"' % prm_name for prm_name in params])
-
-    #q_conds.append('p.name IN (%s)' % quoted_params)
 
     q_fields = ['t.iso_id', 't.nu', 't.Sw', 't.Elower', 't.gp', 't.gpp', 
                 'p_nu.val', 'p_Sw.val', 'p_gamma_air.val', 'p_gamma_self.val',
@@ -48,10 +60,7 @@ def do_search_atmos_min(form):
                  % (','.join(q_fields), q_from, q_where)
     print query
 
-    search_summary = {'summary_html':
-            '<p>Here are the results of the query in "atmos-min" format</p>'}
-
-    # here's where we do the rawest of the raw SQL query
+    # here's where we do our rawest of the raw SQL query
     from django.db import connection, transaction
     cursor = connection.cursor()
     cursor.execute(query)
@@ -72,6 +81,8 @@ def do_search_atmos_min(form):
 
     end_time = time.time()
         
+    search_summary = {'summary_html':
+            '<p>Here are the results of the query in "atmos-min" format</p>'}
     search_summary['ntrans'] = ntrans
     search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
 
@@ -80,8 +91,20 @@ def do_search_atmos_min(form):
 def write_atmos_min(filestem, rows, form):
     """
     Write the output transitions file for the "atmos-min" output collection.
-    The rows returned from the database query are:
+
+    Arguments:
+    filestem: the base filename without path or extension: appended with
+    -trans.<ext>, -sources.<ext>, etc. to form the output filename
+
+    rows: the rows returned from the database query; for "atmos_min" they are
     iso_id, nu, Sw, Elower, gp, gpp, [prm values], [prm errors], [prm refs]
+
+    form: the Django-parsed Form object containing the parameters for the
+    search.
+
+    Returns:
+    a list of the filenames of files created in writing the output: in this
+    case, the transitions file and (optionally) the sources file.
 
     """
 
@@ -89,48 +112,35 @@ def write_atmos_min(filestem, rows, form):
     output_file_list = [outpath,]
 
     fo = open(outpath, 'w')
-    s_fmt = form.field_separator.join(
-            ['%2d','%2d','%12.6f','%10.3e','%10s','%5s', '%5s',
-             '%6.4f', '%6.4f', '%7.4f', '%9.6f',
-             '%8s', '%8s', '%8s', '%8s', '%8s', '%8s',
-             '%5s', '%5s', '%5s', '%5s', '%5s', '%5s'])
 
-    if form.default_entry == '-1':
-        default_Epp = '   -1.0000'
-        default_g = '   -1'
-        default_prm_err = '    -1.0'
-        default_prm_ref = '   -1'
-    else:
-        default_Epp = form.default_entry * 10
-        default_g = form.default_entry * 5
-        default_prm_err = form.default_entry * 8
-        default_prm_ref = form.default_entry * 5
+    # output formatting specifiers for each field of each line of the
+    # transitions list output
+    fmts = ['%2d', '%2d', '%12.6f', '%10.3e', '%10s', '%5s', '%5s',
+            '%6.4f', '%6.4f', '%7.4f', '%9.6f',
+            '%8s', '%8s', '%8s', '%8s', '%8s', '%8s',
+            '%5s', '%5s', '%5s', '%5s', '%5s', '%5s']
+    s_fmt = form.field_separator.join(fmts)
 
-    source_ids = set()
+    # get defaults for missing parameters
+    default_Epp, default_g, default_prm_err, default_prm_ref\
+            = get_prm_defaults(form)
+
+    nfields = len(fmts)
+    source_ids = set()  # keep track of which unique references we've seen
+    # the fields get staged for output in this list - NB to prevent
+    # contamination between transitions, *every* entry in the fields list
+    # must be populated for each row, even if it is with a default value
+    fields = [None] * nfields
     for row in rows:
-        fields = [None]*23
         iso_id = row[0]
-        fields[0], fields[1] = hitranIDs[iso_id]
-        #molecule_id, local_iso_id = hitranIDs[iso_id]
+        fields[0], fields[1] = hitranIDs[iso_id]    # molecule_id, local_iso_id
+        fields[2], fields[3] = row[1:3]     # nu.val, Sw.val
+        fields[4] = set_field('%10.4f', row[3], default_Epp) # Epp
+        fields[5] = set_field('%5d', row[4], default_g) # gp
+        fields[6] = set_field('%5d', row[5], default_g) # gpp
 
-        fields[2], fields[3] = row[1:3]
-
-        try:    # Epp
-            fields[4] = '%10.4f' % row[3]
-        except TypeError:
-            fields[4] = default_Epp
-        try:    # gp
-            fields[5]= '%5d' % row[4]
-        except TypeError:
-            fields[5] = default_g
-        try:    # gpp
-            fields[6] = '%5d' % row[5]
-        except TypeError:
-            fields[6] = default_g
-
-        # parameter values
-        #prm = [None, None, 0., 0., 0., 0.]
-        #fields[7:11] = 0.   # default parameter value
+        # parameter values: start at row[8] because we've already output nu
+        # (row[6]) and Sw (row[7]) directly from the transitions table
         for i,x in enumerate(row[8:12]):
             try:
                 fields[i+7] = float(x)
@@ -139,7 +149,6 @@ def write_atmos_min(filestem, rows, form):
                 pass
 
         # parameter errors
-        #s_prm_err = [default_prm_err] * 6
         for i,x in enumerate(row[12:18]):
             try:
                 #s_prm_err[i] = '%8.1e' % float(x)
@@ -149,11 +158,9 @@ def write_atmos_min(filestem, rows, form):
                 pass
 
         # parameter sources
-        #s_prm_ref = [default_prm_ref] * 6
         for i,x in enumerate(row[18:24]):
             try:
                 source_ids.add(x)
-                #s_prm_ref[i] = '%5d' % x
                 fields[i+17] = '%5d' % x
             except TypeError:
                 fields[i+17] = default_prm_ref

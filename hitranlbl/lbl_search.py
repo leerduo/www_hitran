@@ -11,14 +11,13 @@ def do_search(form, output_collections):
     of the LblSearchForm class.
 
     """
-    from django import db
-    from django.db import connection
-    db.reset_queries()
 
     output_collection = output_collections[form.output_collection_index]
-
     return search_routines[output_collection.name](form)
 
+# The search_routines dictionary maps the names of the output "collections"
+# onto the methods which implement them - don't forget to import them at the
+# top of this file!
 search_routines = {
         'HITRAN2004+': do_search_par,
         'min': do_search_min,
