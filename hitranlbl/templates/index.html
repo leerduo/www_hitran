@@ -193,9 +193,11 @@ function change_output_collection()
     if (collectionID == HITRAN_collectionID) {
         default_entries.style.visibility = 'hidden';
         field_separator.style.visibility = 'hidden';
+        output_states.style.visibility = 'hidden';
     } else {
         default_entries.style.visibility = 'visible';
         field_separator.style.visibility = 'visible';
+        output_states.style.visibility = 'visible';
     }
 }
 
@@ -257,7 +259,13 @@ function initialize_page()
 {% for molecule in present_molecules %}
 <div id="isos_{{ molecule.id }}_window" name="{{ molecule.id }}" class="modal_window">
 <h4>Select the required isotopologues of {{ molecule.ordinary_formula_html|safe }}</h4>
-<table>
+<table class="iso_modal">
+<tr>
+<th></th>
+<th>Isotopologue</th>
+<th>AFGL code</th>
+<th>abundance</th>
+</tr>
 {% for iso in molecule.iso_set.all %}
 <tr>
 <td><input type="checkbox" name="iso" class="isocheckbox_{{ iso.id }}" value="{{ iso.id }}"/></td>
@@ -385,7 +393,13 @@ function initialize_page()
 <div id="output_sources">
 <p>
 Output data source citations:<br/>
-HTML <input type="checkbox" name="output_sources" value="html"/> BibTeX <input type="checkbox" name="output_sources" value="bibtex"/>
+<input type="checkbox" name="output_sources" value="html"/> HTML <input type="checkbox" name="output_sources" value="bibtex"/> BibTeX
+</p>
+</div>
+
+<div id="output_states">
+<p>
+<input type="checkbox" name="output_states" value="True" /> Output separate states file
 </p>
 </div>
 

@@ -63,10 +63,22 @@ h1 {
     font-family: serif;
 }
 
+.iso_modal th {
+    font-weight: normal;
+    text-decoration: underline;
+    padding-left: 10px;
+}
+
+.iso_modal td {
+    padding-left: 10px;
+}
+
 .error_msg {
     color: #f00;
 }
 
+/* molecule checkboxes are ticked grey when only some of
+   the isotopologues are selected */
 .some_selected {
     opacity: 0.5;
     filter: alpha(opacity=50);

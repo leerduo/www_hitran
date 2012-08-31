@@ -4,12 +4,17 @@ import time
 from django.conf import settings
 from search_utils import get_basic_conditions, get_filestem, hitranIDs,\
                          get_iso_ids_list, get_prm_defaults, set_field,\
-                         write_sources
-from hitranmeta.models import Iso
+                         write_sources, write_states, cfmt2ffmt
+from hitranmeta.models import Iso, OutputField
+
+# a list of all the parameters with their own tables in the database
+# TODO NB obtain this form the prm_desc table
+atmos_prms = ['nu', 'Sw', 'A', 'gamma_air', 'gamma_self', 'n_air',
+            'delta_air']
 
 def do_search_atmos_min(form):
     """
-    Do the search for the "atmos_min" output collection, as a raw SQL query.
+    Do the search for the "atmos_min" output collection, by raw SQL query.
 
     Arguments:
     form: the Django-parsed Form object containing the parameters for the
@@ -31,36 +36,33 @@ def do_search_atmos_min(form):
     # requested isotopologue
     iso_ids_list = get_iso_ids_list(form)
 
+    # the basic constraints of the query
     q_conds = ['t.%s' % q_cond for q_cond in get_basic_conditions(
                                             iso_ids_list, form)]
 
-    q_fields = ['t.iso_id', 't.nu', 't.Sw', 't.Elower', 't.gp', 't.gpp', 
-                'p_nu.val', 'p_Sw.val', 'p_gamma_air.val', 'p_gamma_self.val',
-                'p_n_air.val', 'p_delta_air.val',
-                'p_nu.err', 'p_Sw.err', 'p_gamma_air.err', 'p_gamma_self.err',
-                'p_n_air.err', 'p_delta_air.err',
-                'p_nu.source_id', 'p_Sw.source_id', 'p_gamma_air.source_id',
-                'p_gamma_self.source_id', 'p_n_air.source_id',
-                'p_delta_air.source_id',
-               ]
+    # the fields to return from the query
+    q_fields = ['t.iso_id', 't.Elower', 't.gp', 't.gpp', 
+                'statep_id', 'statepp_id']
+    for prm in atmos_prms:
+        q_fields.extend(['p_%s.val' % prm, 'p_%s.ierr' % prm,
+                         'p_%s.source_id' % prm])
 
-    q_from = 'hitranlbl_trans t'\
-          ' LEFT OUTER JOIN prm_nu p_nu ON p_nu.trans_id=t.id'\
-          ' LEFT OUTER JOIN prm_Sw p_Sw ON p_Sw.trans_id=t.id'\
-          ' LEFT OUTER JOIN prm_gamma_air p_gamma_air'\
-                       ' ON p_gamma_air.trans_id=t.id'\
-          ' LEFT OUTER JOIN prm_n_air p_n_air ON p_n_air.trans_id=t.id'\
-          ' LEFT OUTER JOIN prm_gamma_self p_gamma_self'\
-                       ' ON p_gamma_self.trans_id=t.id'\
-          ' LEFT OUTER JOIN prm_delta_air p_delta_air'\
-                       ' ON p_delta_air.trans_id=t.id'\
+    # the table joins
+    q_from_list = ['hitranlbl_trans t',]
+    for prm in atmos_prms:
+        q_from_list.append('prm_%s p_%s ON p_%s.trans_id=t.id' % (prm,prm,prm))
+    q_from = ' LEFT OUTER JOIN '.join(q_from_list)
                
     q_where = ' AND '.join(q_conds)
     query = 'SELECT %s FROM %s WHERE %s'\
-                 % (','.join(q_fields), q_from, q_where)
+                 % (', '.join(q_fields), q_from, q_where)
     print query
+    
+    # if we're limiting the query, here's where we add that constraint
+    if settings.LIMIT is not None:
+        query = '%s LIMIT %d' % (query, settings.LIMIT)
 
-    # here's where we do our rawest of the raw SQL query
+    # here's where we do the rawest of the raw SQL query
     from django.db import connection, transaction
     cursor = connection.cursor()
     cursor.execute(query)
@@ -80,9 +82,37 @@ def do_search_atmos_min(form):
     output_files = [os.path.basename(x) for x in output_files]
 
     end_time = time.time()
-        
-    search_summary = {'summary_html':
-            '<p>Here are the results of the query in "atmos-min" format</p>'}
+
+    summary_html = ['<p>Here are the results of the query in "atmos_min"'
+                    ' format</p>',]
+    # XXX Shhhh... don't tell anyone!
+    if settings.LIMIT is not None:
+        summary_html.append('<p>The number of returned transitions has '
+           'been limited to a maximum of %d</p>' % settings.LIMIT)
+
+    #sep_len = len(form.field_separator)
+    #sep_cfmt = ''
+    #if sep_len > 0:
+    #    sep_cfmt = '%' + '%ds' % len(form.field_separator)
+    #s_cfmts = sep_cfmt.join(fmts)
+    #ffmts = []
+    #import re
+    #patt = '(%[\d\.]+[sdef]+)'
+    #for fmt in fmts:
+    #    cfmt = re.search(patt, fmt).group(1)
+    #    ffmt = cfmt2ffmt(cfmt)
+    #    ffmt = fmt.replace(cfmt, ffmt)
+    #    ffmt = ffmt.replace('(%1d)[%5d]', ', 1X, I1, 2X, I5, 1X')
+    #    ffmts.append(ffmt)
+    #sep_ffmt = ', '
+    #if sep_len > 0:
+    #    sep_ffmt = ', %dX' % len(form.field_separator)
+    #s_ffmts = sep_ffmt.join(ffmts)
+    #summary_html.append('<p>C-style formatting string:<br/>'\
+    #       '<span style="font-family: monospace">%s</span></p>' % s_cfmts)
+    #summary_html.append('<p>Fortran-style formatting string:<br/>'\
+    #       '<span style="font-family: monospace">(%s)</span></p>' % s_ffmts)
+    search_summary = {'summary_html': ''.join(summary_html)}
     search_summary['ntrans'] = ntrans
     search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
 
@@ -90,21 +120,11 @@ def do_search_atmos_min(form):
 
 def write_atmos_min(filestem, rows, form):
     """
-    Write the output transitions file for the "atmos-min" output collection.
-
-    Arguments:
-    filestem: the base filename without path or extension: appended with
-    -trans.<ext>, -sources.<ext>, etc. to form the output filename
-
-    rows: the rows returned from the database query; for "atmos_min" they are
-    iso_id, nu, Sw, Elower, gp, gpp, [prm values], [prm errors], [prm refs]
-
-    form: the Django-parsed Form object containing the parameters for the
-    search.
-
-    Returns:
-    a list of the filenames of files created in writing the output: in this
-    case, the transitions file and (optionally) the sources file.
+    Write the output transitions file for the "atmos_min" output
+    collection.
+    The rows returned from the database query are:
+    iso_id, Elower, gp, gpp, statep_id, statepp_id, [prm values],
+    [prm errors], [prm refs]
 
     """
 
@@ -113,65 +133,64 @@ def write_atmos_min(filestem, rows, form):
 
     fo = open(outpath, 'w')
 
-    # output formatting specifiers for each field of each line of the
-    # transitions list output
-    fmts = ['%2d', '%2d', '%12.6f', '%10.3e', '%10s', '%5s', '%5s',
-            '%6.4f', '%6.4f', '%7.4f', '%9.6f',
-            '%8s', '%8s', '%8s', '%8s', '%8s', '%8s',
-            '%5s', '%5s', '%5s', '%5s', '%5s', '%5s']
+    fmts = ['%2d', '%2d', '%4d', '%10s', '%5s', '%5s', '%12d', '%12d']
+    for prm in atmos_prms:
+        output_field = OutputField.objects.filter(name='%s.val' % prm).get()
+        fmts.append(''.join([output_field.cfmt, '(%1d)', '[%5d]']))
     s_fmt = form.field_separator.join(fmts)
+    print s_fmt
 
-    # get defaults for missing parameters
+    # get defaults for missing parameters - NB default_prm_err and
+    # default_prm_ref are ignored, because these defaults are hard-coded to 0
     default_Epp, default_g, default_prm_err, default_prm_ref\
             = get_prm_defaults(form)
 
-    nfields = len(fmts)
-    source_ids = set()  # keep track of which unique references we've seen
+    nfields = 8 + 3*len(atmos_prms)
+    source_ids = set()
+    state_ids = set()
     # the fields get staged for output in this list - NB to prevent
     # contamination between transitions, *every* entry in the fields list
     # must be populated for each row, even if it is with a default value
     fields = [None] * nfields
     for row in rows:
-        iso_id = row[0]
-        fields[0], fields[1] = hitranIDs[iso_id]    # molecule_id, local_iso_id
-        fields[2], fields[3] = row[1:3]     # nu.val, Sw.val
-        fields[4] = set_field('%10.4f', row[3], default_Epp) # Epp
-        fields[5] = set_field('%5d', row[4], default_g) # gp
-        fields[6] = set_field('%5d', row[5], default_g) # gpp
+        global_iso_id = row[0]
+        fields[0] = global_iso_id
+        molecule_id, local_iso_id = hitranIDs[global_iso_id]
+        fields[1], fields[2] = molecule_id, local_iso_id
+        fields[3] = set_field('%10.4f', row[1], default_Epp) # Epp
+        fields[4] = set_field('%5d', row[2], default_g) # gp
+        fields[5] = set_field('%5d', row[3], default_g) # gpp
 
-        # parameter values: start at row[8] because we've already output nu
-        # (row[6]) and Sw (row[7]) directly from the transitions table
-        for i,x in enumerate(row[8:12]):
-            try:
-                fields[i+7] = float(x)
-            except TypeError:
-                fields[i+7] = 0.
-                pass
+        statep_id = row[4]
+        statepp_id = row[5]
+        if form.output_states:
+            state_ids.add(statep_id)
+            state_ids.add(statepp_id)
+        fields[6], fields[7] = statep_id, statepp_id
 
-        # parameter errors
-        for i,x in enumerate(row[12:18]):
-            try:
-                #s_prm_err[i] = '%8.1e' % float(x)
-                fields[i+11] = '%8.1e' % float(x)
-            except TypeError:
-                fields[i+11] = default_prm_err
-                pass
-
-        # parameter sources
-        for i,x in enumerate(row[18:24]):
-            try:
-                source_ids.add(x)
-                fields[i+17] = '%5d' % x
-            except TypeError:
-                fields[i+17] = default_prm_ref
-                pass
-        
+        i = 6
+        while i < len(row):
+            # each parameter is returned with its value, integer error code
+            # and source_id
+            val, ierr, source_id = row[i:i+3]
+            if val is None:
+                fields[i+2:i+5] = 0., 0., 0   # defaults
+                i += 3
+                continue
+            fields[i+2] = val
+            fields[i+3] = ierr
+            fields[i+4] = source_id
+            source_ids.add(source_id)
+            i += 3
+            
         print >>fo, s_fmt % tuple(fields)
 
     fo.close()
 
+    # write the states
+    if form.output_states:
+        output_file_list.extend(write_states(form, filestem, state_ids))
+    # write the sources
     output_file_list.extend(write_sources(form, filestem, source_ids))
 
     return output_file_list
-
-

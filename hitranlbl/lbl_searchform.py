@@ -75,9 +75,6 @@ class LblSearchForm:
                     post_data.get('output_collection'))
             self.valid_on = datetime.strptime(post_data.get('valid_on'),
                     '%Y-%m-%d').date()
-            #self.get_states = False
-            #if post_data.get('get_states'):
-            #    self.get_states = True
         except ValueError:
             self.error_msg = '<p class="error_msg">Invalid search terms</p>'
             return
@@ -147,6 +144,11 @@ class LblSearchForm:
             self.output_bibtex_sources =  True
         self.output_sources = self.output_html_sources\
                             | self.output_bibtex_sources
+
+        output_states = post_data.get('output_states')
+        self.output_states = False
+        if output_states:
+            self.output_states = True
 
         self.error_msg = ''
         self.valid = True

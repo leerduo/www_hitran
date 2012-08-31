@@ -4,6 +4,7 @@
 # Helper methods for writing search results from the hitranlbl Django app.
 
 import os
+import re
 import time
 import datetime
 from django.conf import settings
@@ -15,6 +16,25 @@ hitranIDs = [None,]    # NB there's no iso_id=0
 isos = Iso.objects.all()
 for iso in isos:
     hitranIDs.append((iso.molecule.id, iso.isoID))
+
+def cfmt2ffmt(cfmt):
+    """
+    Convert the C-style formatting string, cfmt to a Fortran-style formatting
+    string, and return it. e.g. '%12.6f' -> 'F12.6', '%5d' -> 'I5'.
+
+    """
+
+    ft = {'d': 'I', 'e': 'E', 'f': 'F', 's': 'A'}
+    patt = '%(\d+)(\.\d+)?([defs])'
+    m = re.match(patt, cfmt)
+    if not m:
+        return None
+    w = m.group(1)
+    ct = m.group(3)
+    dp = m.group(2)
+    if dp is None:
+        return '%s%s' % (ft[ct], w)
+    return '%s%s%s' % (ft[ct], w, dp)
 
 def get_filestem():
     """
