@@ -1,0 +1,13 @@
+insert into hitranmeta_outputfield (name, name_html, cfmt, ffmt, `desc`, desc_html, `default`, prm_type, eval_str) select "nu.val", name_html, cfmt, ffmt, `desc`, desc_html, `default`, prm_type, eval_str from hitranmeta_outputfield where name="nu";
+insert into hitranmeta_outputfield (name, name_html, cfmt, ffmt, `desc`, desc_html, `default`, prm_type, eval_str) select "Sw.val", name_html, cfmt, ffmt, `desc`, desc_html, `default`, prm_type, eval_str from hitranmeta_outputfield where name="Sw";
+
+
+INSERT INTO prm_gamma_H2O (trans_id, val, err, ierr, source_id) values (2800689, 0.079, 1.e-3, 7, 574);
+INSERT INTO prm_gamma_H2O (trans_id, val, err, ierr, source_id) values (2800692, 0.076, 4.e-3, 5, 574);
+INSERT INTO prm_gamma_H2O (trans_id, val, err, ierr, source_id) values (4377692, 0.095, 7.e-3, 5, 574);
+INSERT INTO prm_gamma_H2O (trans_id, val, err, ierr, source_id) values (4377696, 0.105, 2.1e-2, 3, 574);
+INSERT INTO prm_gamma_H2O (trans_id, val, err, ierr, source_id) values (2800710, 0.074, 1.4e-2, 4, 574);
+INSERT INTO prm_gamma_H2O (trans_id, val, err, ierr, source_id) values (2800714, 0.079, 3.6e-2, 3, 574);
+
+INSERT INTO prm_nu (trans_id, val, err, source_id) SELECT trans_id, val, err, source_id FROM hitranlbl_prm WHERE name="nu" and trans_id > 4755881;
+INSERT INTO prm_gamma_self (trans_id, val, err, source_id) SELECT trans_id, val, err, source_id FROM hitranlbl_prm WHERE name="gamma_self" and trans_id > 4755881;

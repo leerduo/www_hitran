@@ -1,0 +1,18 @@
+INSERT INTO prm_nu (trans_id, val, err, source_id) SELECT trans_id, val, err, source_id FROM hitranlbl_prm WHERE name="nu";
+INSERT INTO prm_Sw (trans_id, val, err, source_id) SELECT trans_id, val, err, source_id FROM hitranlbl_prm WHERE name="Sw";
+INSERT INTO prm_A (trans_id, val, err, source_id) SELECT trans_id, val, err, source_id FROM hitranlbl_prm WHERE name="A";
+INSERT INTO prm_gamma_air (trans_id, val, err, source_id) SELECT trans_id, val, err, source_id FROM hitranlbl_prm WHERE name="gamma_air";
+INSERT INTO prm_gamma_self (trans_id, val, err, source_id) SELECT trans_id, val, err, source_id FROM hitranlbl_prm WHERE name="gamma_self";
+INSERT INTO prm_n_air (trans_id, val, err, source_id) SELECT trans_id, val, err, source_id FROM hitranlbl_prm WHERE name="n_air";
+INSERT INTO prm_delta_air (trans_id, val, err, source_id) SELECT trans_id, val, err, source_id FROM hitranlbl_prm WHERE name="delta_air";
+
+
+UPDATE prm_nu p, hitranlbl_trans t SET p.ierr=CAST(SUBSTRING(par_line,128,1) AS UNSIGNED) WHERE p.trans_id=t.id;
+UPDATE prm_Sw p, hitranlbl_trans t SET p.ierr=CAST(SUBSTRING(par_line,129,1) AS UNSIGNED) WHERE p.trans_id=t.id;
+UPDATE prm_A p, hitranlbl_trans t SET p.ierr=CAST(SUBSTRING(par_line,129,1) AS UNSIGNED) WHERE p.trans_id=t.id;
+UPDATE prm_gamma_air p, hitranlbl_trans t SET p.ierr=CAST(SUBSTRING(par_line,130,1) AS UNSIGNED) WHERE p.trans_id=t.id;
+UPDATE prm_gamma_self p, hitranlbl_trans t SET p.ierr=CAST(SUBSTRING(par_line,131,1) AS UNSIGNED) WHERE p.trans_id=t.id;
+UPDATE prm_n_air p, hitranlbl_trans t SET p.ierr=CAST(SUBSTRING(par_line,132,1) AS UNSIGNED) WHERE p.trans_id=t.id;
+UPDATE prm_delta_air p, hitranlbl_trans t SET p.ierr=CAST(SUBSTRING(par_line,133,1) AS UNSIGNED) WHERE p.trans_id=t.id;
+
+UPDATE prm_nu p, hitranlbl_trans t SET p.ierr=CAST(SUBSTRING(par_line,128,1) AS UNSIGNED) WHERE p.trans_id=t.id and t.id>4755881;

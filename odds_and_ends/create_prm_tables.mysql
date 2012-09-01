@@ -1,0 +1,132 @@
+CREATE TABLE `prm_nu` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_nu_trans_key` (`trans_id`),
+  KEY `prm_nu_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_Sw` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_Sw_trans_key` (`trans_id`),
+  KEY `prm_Sw_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_A` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_A_trans_key` (`trans_id`),
+  KEY `prm_A_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_gamma_air` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_gamma_air_trans_key` (`trans_id`),
+  KEY `prm_gamma_air_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_gamma_self` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_gamma_self_trans_key` (`trans_id`),
+  KEY `prm_gamma_self_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_n_air` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_n_air_trans_key` (`trans_id`),
+  KEY `prm_n_air_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_delta_air` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_delta_air_trans_key` (`trans_id`),
+  KEY `prm_delta_air_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_gamma_H2O` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_gamma_H2O_trans_key` (`trans_id`),
+  KEY `prm_gamma_H2O_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_gamma_CO2` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_gamma_CO2_trans_key` (`trans_id`),
+  KEY `prm_gamma_CO2_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_n_CO2` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_n_CO2_trans_key` (`trans_id`),
+  KEY `prm_n_CO2_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `prm_delta_CO2` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trans_id` int(11) NOT NULL,
+  `val` double NOT NULL,
+  `err` double DEFAULT NULL,
+  `ierr` tinyint(4) DEFAULT NULL,
+  `source_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `prm_delta_CO2_trans_key` (`trans_id`),
+  KEY `prm_delta_CO2_source_id_index` (`source_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+

@@ -2,20 +2,18 @@
 import os
 import time
 from django.conf import settings
-from django.db import connection
 from search_utils import get_basic_conditions, get_filestem, hitranIDs,\
                          get_iso_ids_list, get_prm_defaults, set_field,\
-                         write_sources, write_states, cfmt2ffmt
+                         write_sources, write_states
 from hitranmeta.models import Iso, OutputField
 
-# a list of all the parameters with their own tables in the database
-# TODO NB obtain this form the prm_desc table
-atmos_prms = ['nu', 'Sw', 'A', 'gamma_air', 'gamma_self', 'n_air',
-            'delta_air']
+# a list of the venus-collection parameters with their own tables in the
+# database
+venus_prms = ['nu', 'Sw', 'A', 'gamma_CO2', 'n_CO2', 'delta_CO2']
 
-def do_search_atmos_min(form):
+def do_search_venus(form):
     """
-    Do the search for the "atmos_min" output collection, by raw SQL query.
+    Do the search for the "venus" output collection, by raw SQL query.
 
     Arguments:
     form: the Django-parsed Form object containing the parameters for the
@@ -44,13 +42,13 @@ def do_search_atmos_min(form):
     # the fields to return from the query
     q_fields = ['t.iso_id', 't.Elower', 't.gp', 't.gpp', 
                 'statep_id', 'statepp_id']
-    for prm in atmos_prms:
+    for prm in venus_prms:
         q_fields.extend(['p_%s.val' % prm, 'p_%s.ierr' % prm,
                          'p_%s.source_id' % prm])
 
     # the table joins
     q_from_list = ['hitranlbl_trans t',]
-    for prm in atmos_prms:
+    for prm in venus_prms:
         q_from_list.append('prm_%s p_%s ON p_%s.trans_id=t.id' % (prm,prm,prm))
     q_from = ' LEFT OUTER JOIN '.join(q_from_list)
                
@@ -64,6 +62,7 @@ def do_search_atmos_min(form):
         query = '%s LIMIT %d' % (query, settings.LIMIT)
 
     # here's where we do the rawest of the raw SQL query
+    from django.db import connection, transaction
     cursor = connection.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()
@@ -74,7 +73,7 @@ def do_search_atmos_min(form):
 
     ts = time.time()
     filestem = get_filestem()
-    output_files = write_atmos_min(filestem, iso_ids_list, rows, form)
+    output_files = write_venus(filestem, rows, form)
     te = time.time()
     print 'time to write transitions = %.1f secs' % (te - ts)
 
@@ -83,44 +82,21 @@ def do_search_atmos_min(form):
 
     end_time = time.time()
 
-    summary_html = ['<p>Here are the results of the query in "atmos_min"'
-                    ' format</p>',]
-    # XXX Shhhh... don't tell anyone!
+    summary_text = '<p>Here are the results of the query in "venus"'\
+                   ' format</p>'
     if settings.LIMIT is not None:
-        summary_html.append('<p>The number of returned transitions has '
-           'been limited to a maximum of %d</p>' % settings.LIMIT)
-
-    #sep_len = len(form.field_separator)
-    #sep_cfmt = ''
-    #if sep_len > 0:
-    #    sep_cfmt = '%' + '%ds' % len(form.field_separator)
-    #s_cfmts = sep_cfmt.join(fmts)
-    #ffmts = []
-    #import re
-    #patt = '(%[\d\.]+[sdef]+)'
-    #for fmt in fmts:
-    #    cfmt = re.search(patt, fmt).group(1)
-    #    ffmt = cfmt2ffmt(cfmt)
-    #    ffmt = fmt.replace(cfmt, ffmt)
-    #    ffmt = ffmt.replace('(%1d)[%5d]', ', 1X, I1, 2X, I5, 1X')
-    #    ffmts.append(ffmt)
-    #sep_ffmt = ', '
-    #if sep_len > 0:
-    #    sep_ffmt = ', %dX' % len(form.field_separator)
-    #s_ffmts = sep_ffmt.join(ffmts)
-    #summary_html.append('<p>C-style formatting string:<br/>'\
-    #       '<span style="font-family: monospace">%s</span></p>' % s_cfmts)
-    #summary_html.append('<p>Fortran-style formatting string:<br/>'\
-    #       '<span style="font-family: monospace">(%s)</span></p>' % s_ffmts)
-    search_summary = {'summary_html': ''.join(summary_html)}
+        summary_text = '%s\n<p>The number of returned transitions has been'\
+                       ' limited to a maximum of %d'\
+                            % (summary_text, settings.LIMIT)
+    search_summary = {'summary_html': summary_text}
     search_summary['ntrans'] = ntrans
     search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
 
     return output_files, search_summary
 
-def write_atmos_min(filestem, iso_ids_list, rows, form):
+def write_venus(filestem, rows, form):
     """
-    Write the output transitions file for the "atmos_min" output
+    Write the output transitions file for the "venus" output
     collection.
     The rows returned from the database query are:
     iso_id, Elower, gp, gpp, statep_id, statepp_id, [prm values],
@@ -132,22 +108,20 @@ def write_atmos_min(filestem, iso_ids_list, rows, form):
     output_file_list = [outpath,]
 
     fo = open(outpath, 'w')
-
-    fmts = ['%2d', '%2d', '%4d', '%10s', '%5s', '%5s', '%12d', '%12d']
-    for prm in atmos_prms:
+    fmts = ['%4d', '%2d', '%2d', '%10s', '%5s', '%5s', '%12d', '%12d']
+    for prm in venus_prms:
         output_field = OutputField.objects.filter(name='%s.val' % prm).get()
         fmts.append(''.join([output_field.cfmt, '(%1d)', '[%5d]']))
     s_fmt = form.field_separator.join(fmts)
-    print s_fmt
 
     # get defaults for missing parameters - NB default_prm_err and
     # default_prm_ref are ignored, because these defaults are hard-coded to 0
     default_Epp, default_g, default_prm_err, default_prm_ref\
             = get_prm_defaults(form)
 
-    nfields = 8 + 3*len(atmos_prms)
+    nfields = 8 + 3*len(venus_prms)
     source_ids = set()
-    #state_ids = set()
+    state_ids = set()
     # the fields get staged for output in this list - NB to prevent
     # contamination between transitions, *every* entry in the fields list
     # must be populated for each row, even if it is with a default value
@@ -163,9 +137,9 @@ def write_atmos_min(filestem, iso_ids_list, rows, form):
 
         statep_id = row[4]
         statepp_id = row[5]
-        #if form.output_states:
-        #    state_ids.add(statep_id)
-        #    state_ids.add(statepp_id)
+        if form.output_states:
+            state_ids.add(statep_id)
+            state_ids.add(statepp_id)
         fields[6], fields[7] = statep_id, statepp_id
 
         i = 6
@@ -189,8 +163,9 @@ def write_atmos_min(filestem, iso_ids_list, rows, form):
 
     # write the states
     if form.output_states:
-        output_file_list.extend(write_states(form, filestem, iso_ids_list))
+        output_file_list.extend(write_states(form, filestem, state_ids))
     # write the sources
     output_file_list.extend(write_sources(form, filestem, source_ids))
 
     return output_file_list
+

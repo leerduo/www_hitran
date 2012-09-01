@@ -8,6 +8,7 @@ import re
 import time
 import datetime
 from django.conf import settings
+from django.db import connection
 from hitranmeta.models import Molecule, Iso, Source, RefsMap
 from hitranlbl.models import State
 
@@ -177,7 +178,7 @@ def set_field(cfmt, val, default):
         field = default
     return field
 
-def write_states(form, filestem, state_ids):
+def write_states(form, filestem, iso_ids_list):
     """
     Write the states with ids given in the list state_ids to the output file
     formed from filestem.
@@ -189,8 +190,8 @@ def write_states(form, filestem, state_ids):
     filestem: the base filename without path or extension: appended with
     -states.<ext>, and the relevant path to form the output states filename
 
-    state_ids: the IDs (within the hitranlbl_state table) of the states to
-    be output.
+    iso_ids_list: a comma-separated string comprising the list of isotopologue 
+    IDs searched for
 
     Returns:
     a list with the single entry, states_path, which is the absolute path
@@ -200,6 +201,29 @@ def write_states(form, filestem, state_ids):
     """
     states_path = os.path.join(settings.RESULTSPATH,
                                '%s-states.txt' % filestem)
+
+    # if we're limiting the query, here's where we add that constraint
+    q_conds = get_basic_conditions(iso_ids_list, form)
+    sub_query_conds = ' AND '.join(q_conds)
+    sub_queryp = 'SELECT statep_id AS sid FROM hitranlbl_trans t WHERE %s'\
+                        % sub_query_conds
+    if settings.LIMIT is not None:
+        sub_queryp = '%s LIMIT %d' % (sub_queryp, settings.LIMIT)
+    sub_querypp = 'SELECT statepp_id AS sid FROM hitranlbl_trans t WHERE %s'\
+                        % sub_query_conds
+    if settings.LIMIT is not None:
+        sub_querypp = '%s LIMIT %d' % (sub_querypp, settings.LIMIT)
+    query = 'SELECT st.id, st.iso_id, st.energy, st.g, st.nucspin_label,'\
+            ' st.s_qns FROM hitranlbl_state st, (SELECT DISTINCT(sid) FROM'\
+            ' (%s UNION %s) sids, hitranlbl_state s WHERE sids.sid=s.id)'\
+            ' stid WHERE st.id=sid ORDER BY st.energy' % (sub_queryp, sub_querypp)
+    print query
+
+    # here's where we do the rawest of the raw SQL query
+    cursor = connection.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    # each state row is: id, energy, g, nucspin_label, s_qns
 
     fo = open(states_path, 'w')
     fmts = ['%12d', '%4d', '%10s','%5s', '%2s', '%s']
@@ -216,24 +240,22 @@ def write_states(form, filestem, state_ids):
         default_g = form.default_entry * 5
         default_nucspin_label = ' %s' % form.default_entry
 
-    print 'default_nucspin_label =',default_nucspin_label
-
     # the fields get staged for output in this list - NB to prevent
     # contamination between states, *every* entry in the fields list
     # must be populated for each row, even if it is with a default value
     fields = [None] * len(fmts)
-    for state_id in state_ids:
-        # XXX is this really the best way of doing this...?
-        state = State.objects.filter(pk=state_id).get()
-        fields[0] = state_id
-        fields[1] = state.iso_id
-        fields[2] = set_field('%10.4f', state.energy, default_energy)
-        fields[3] = set_field('%5d', state.g, default_g)
-        if state.nucspin_label is None:
+    for row in rows:
+        fields[0] = row[0]  # state id
+        fields[1] = row[1]  # iso_id
+        fields[2] = set_field('%10.4f', row[2], default_energy)
+        fields[3] = set_field('%5d', row[3], default_g)
+        nucspin_label = row[4]
+        if nucspin_label is None:
             fields[4] = default_nucspin_label
         else:
-            fields[4] = state.nucspin_label
-        fields[5] = set_field(' %s', state.s_qns, '***')    # quantum numbers
+            fields[4] = nucspin_label
+        # XXX better way of specifying missing state quantum numbers
+        fields[5] = set_field(' %s', row[5], '***')    # quantum numbers
 
         print >>fo, s_fmt % tuple(fields)
     fo.close()
