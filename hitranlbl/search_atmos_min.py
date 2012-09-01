@@ -85,29 +85,10 @@ def do_search_atmos_min(form):
 
     summary_html = ['<p>Here are the results of the query in "atmos_min"'
                     ' format</p>',]
-    # XXX Shhhh... don't tell anyone!
     if settings.LIMIT is not None:
         summary_html.append('<p>The number of returned transitions has '
            'been limited to a maximum of %d</p>' % settings.LIMIT)
 
-    #sep_len = len(form.field_separator)
-    #sep_cfmt = ''
-    #if sep_len > 0:
-    #    sep_cfmt = '%' + '%ds' % len(form.field_separator)
-    #s_cfmts = sep_cfmt.join(fmts)
-    #ffmts = []
-    #import re
-    #patt = '(%[\d\.]+[sdef]+)'
-    #for fmt in fmts:
-    #    cfmt = re.search(patt, fmt).group(1)
-    #    ffmt = cfmt2ffmt(cfmt)
-    #    ffmt = fmt.replace(cfmt, ffmt)
-    #    ffmt = ffmt.replace('(%1d)[%5d]', ', 1X, I1, 2X, I5, 1X')
-    #    ffmts.append(ffmt)
-    #sep_ffmt = ', '
-    #if sep_len > 0:
-    #    sep_ffmt = ', %dX' % len(form.field_separator)
-    #s_ffmts = sep_ffmt.join(ffmts)
     #summary_html.append('<p>C-style formatting string:<br/>'\
     #       '<span style="font-family: monospace">%s</span></p>' % s_cfmts)
     #summary_html.append('<p>Fortran-style formatting string:<br/>'\
@@ -117,6 +98,49 @@ def do_search_atmos_min(form):
     search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
 
     return output_files, search_summary
+
+def get_fmts(form):
+    """
+    Get a list of the formatting specifiers for the output.
+
+    """
+
+    ocfmts = []     # output C-style format list
+    iffmts = []     # input Fortran-style format list
+    core_output_field_names = ['global_iso_id', 'molecule_id', 'local_iso_id',
+                               'Elower', 'gp', 'gpp',
+                               'statep_id', 'statepp_id']
+    core_output_field_fmts = dict(OutputField.objects.filter(
+                name__in=core_output_field_names).values_list('name', 'cfmt'))
+    for core_output_field_name in core_output_field_names:
+        ocfmts.append(core_output_field_fmts[core_output_field_name])
+        iffmts.append(core_output_field_fmts[core_output_field_name])
+    ocfmts[3] = '%10s'  # override Elower format
+    ocfmts[4] = '%5s'   # override gp format
+    ocfmts[5] = '%5s'   # override gpp format
+
+    prm_field_names = []
+    for atmos_prm in atmos_prms:
+        prm_field_names.extend(['%s.val' % atmos_prm, '%s.ierr' % atmos_prm,
+                                '%s.ref' % atmos_prm])
+    prm_field_fmts = dict(OutputField.objects.filter(name__in=prm_field_names)
+                        .values_list('name', 'cfmt'))
+    for atmos_prm in atmos_prms:
+        ocfmts.append('%s(%s)[%s]' % (prm_field_fmts['%s.val' % atmos_prm],
+                                    prm_field_fmts['%s.ierr' % atmos_prm],
+                                    prm_field_fmts['%s.ref' % atmos_prm]))
+        
+        prm_ffmt = [prm_field_fmts['%s.val' % atmos_prm], '1X',
+                    prm_field_fmts['%s.ierr' % atmos_prm], '2X',
+                    prm_field_fmts['%s.ref' % atmos_prm], '1X']
+        iffmts.append(''.join(prm_ffmt))
+    s_cfmt = form.field_separator.join(ocfmts)
+    sep_len = len(form.field_separator)
+    sep_ffmt = ', '
+    if sep_len > 0:
+        sep_ffmt = ', %dX' % len(sep_len)
+    s_iffmts = sep_ffmt.join(iffmts)
+    return s_cfmt, s_iffmts
 
 def write_atmos_min(filestem, iso_ids_list, rows, form):
     """
@@ -133,12 +157,14 @@ def write_atmos_min(filestem, iso_ids_list, rows, form):
 
     fo = open(outpath, 'w')
 
-    fmts = ['%2d', '%2d', '%4d', '%10s', '%5s', '%5s', '%12d', '%12d']
-    for prm in atmos_prms:
-        output_field = OutputField.objects.filter(name='%s.val' % prm).get()
-        fmts.append(''.join([output_field.cfmt, '(%1d)', '[%5d]']))
-    s_fmt = form.field_separator.join(fmts)
-    print s_fmt
+    s_fmt, s_iffmts = get_fmts(form)
+
+    #fmts = ['%2d', '%2d', '%4d', '%10s', '%5s', '%5s', '%12d', '%12d']
+    #for prm in atmos_prms:
+    #    output_field = OutputField.objects.filter(name='%s.val' % prm).get()
+    #    fmts.append(''.join([output_field.cfmt, '(%1d)', '[%5d]']))
+    #s_fmt = form.field_separator.join(fmts)
+    #print s_fmt
 
     # get defaults for missing parameters - NB default_prm_err and
     # default_prm_ref are ignored, because these defaults are hard-coded to 0
@@ -147,7 +173,6 @@ def write_atmos_min(filestem, iso_ids_list, rows, form):
 
     nfields = 8 + 3*len(atmos_prms)
     source_ids = set()
-    #state_ids = set()
     # the fields get staged for output in this list - NB to prevent
     # contamination between transitions, *every* entry in the fields list
     # must be populated for each row, even if it is with a default value
@@ -163,9 +188,6 @@ def write_atmos_min(filestem, iso_ids_list, rows, form):
 
         statep_id = row[4]
         statepp_id = row[5]
-        #if form.output_states:
-        #    state_ids.add(statep_id)
-        #    state_ids.add(statepp_id)
         fields[6], fields[7] = statep_id, statepp_id
 
         i = 6

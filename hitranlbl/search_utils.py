@@ -216,7 +216,8 @@ def write_states(form, filestem, iso_ids_list):
     query = 'SELECT st.id, st.iso_id, st.energy, st.g, st.nucspin_label,'\
             ' st.s_qns FROM hitranlbl_state st, (SELECT DISTINCT(sid) FROM'\
             ' (%s UNION %s) sids, hitranlbl_state s WHERE sids.sid=s.id)'\
-            ' stid WHERE st.id=sid ORDER BY st.energy' % (sub_queryp, sub_querypp)
+            ' stid WHERE st.id=sid ORDER BY st.energy'\
+                        % (sub_queryp, sub_querypp)
     print query
 
     # here's where we do the rawest of the raw SQL query
