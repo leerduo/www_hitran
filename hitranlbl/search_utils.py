@@ -81,8 +81,8 @@ def get_iso_ids_list(form):
 
 def get_basic_conditions(iso_ids_list, form):
     """
-    Return a list of basic conditions for the requested search. These are
-    be "AND"ed together to make the SQL query.
+    Return a list of basic conditions on the transitions table for the
+    requested search. These are "AND"ed together to make the SQL query.
 
     Arguments:
     iso_ids_list: comma-separated string comprising a list of the ids of the
@@ -410,6 +410,21 @@ def write_sources_html(sources_html_path, source_ids):
     print >>fo, '</body></html>'
     fo.close()
 
+def get_all_source_ids(source_ids):
+    """
+    Scan through the Sources with IDs given in the list source_ids and
+    make a complete list of all of the Sources relating to them - that is,
+    including the sources listed within notes, etc. in each Source's
+    source_list.
+
+    """
+    all_source_ids = set(source_ids)
+    for source in Source.objects.filter(pk__in=source_ids):
+        subsources = source.source_list.all()
+        for subsource in subsources:
+            all_source_ids.add(subsource.id)
+    return all_source_ids
+
 def write_sources_bibtex(sources_bib_path, source_ids):
     """
     Write the sources to a BibTeX output file.
@@ -425,11 +440,7 @@ def write_sources_bibtex(sources_bib_path, source_ids):
 
     # we need all the source_ids, even those belonging to sources cited
     # within notes, etc.
-    all_source_ids = set(source_ids)
-    for source in Source.objects.filter(pk__in=source_ids):
-        subsources = source.source_list.all()
-        for subsource in subsources:
-            all_source_ids.add(subsource.id)
+    all_source_ids = get_all_source_ids(source_ids)
 
     fo = open(sources_bib_path, 'w')
     for source_id in sorted(list(all_source_ids)):

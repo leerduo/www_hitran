@@ -56,6 +56,8 @@ class Iso(models.Model):
     # not maximum abundance, apart from Br) isotopeNumbers specified:
     cml = models.TextField(null=True, blank=True)
     case = models.ForeignKey('Case', null=True, blank=True)
+    # state ID of the zero-point energy level of this isotopologue
+    ZPE_state_id = models.IntegerField(null=True, blank=True)
     def __unicode__(self):
         return '%d. %s' % (self.id,self.iso_name)
 
@@ -178,6 +180,7 @@ class SourceMethod(models.Model):
 
 class SourceType(models.Model):
     source_type = models.CharField(max_length=50)
+    xsams_category = models.CharField(max_length=50)
     def __unicode__(self):
         return self.source_type
     class Meta:

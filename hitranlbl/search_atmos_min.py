@@ -34,10 +34,10 @@ def do_search_atmos_min(form):
     start_time = time.time()
 
     # get a comma-separated string comprising a list of the ids of the
-    # requested isotopologue
+    # requested isotopologues
     iso_ids_list = get_iso_ids_list(form)
 
-    # the basic constraints of the query
+    # the basic constraints of the query on the transitions table
     q_conds = ['t.%s' % q_cond for q_cond in get_basic_conditions(
                                             iso_ids_list, form)]
 
@@ -130,6 +130,7 @@ def get_fmts(form):
                                     prm_field_fmts['%s.ierr' % atmos_prm],
                                     prm_field_fmts['%s.ref' % atmos_prm]))
         
+        # TODO - set Fortran-style sepcifiers here!
         prm_ffmt = [prm_field_fmts['%s.val' % atmos_prm], '1X',
                     prm_field_fmts['%s.ierr' % atmos_prm], '2X',
                     prm_field_fmts['%s.ref' % atmos_prm], '1X']
