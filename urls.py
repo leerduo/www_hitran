@@ -12,6 +12,10 @@ urlpatterns = patterns('',
     #url(r'^HITRAN/cia/$', 'HITRAN.hitrancia.views.index'),
     #url(r'^HITRAN/xsc/$', 'HITRAN.hitranxsc.views.index'),
 
+    (r'^tap/sync[/]?$', 'HITRAN.hitranlbl.node_views.sync'),
+    (r'^tap/availability[/]?$', 'HITRAN.hitranlbl.node_views.availability'),
+    (r'^tap/capabilities[/]?$', 'HITRAN.hitranlbl.node_views.capabilities'),
+
     # Uncomment the admin/doc line below to enable admin documentation:
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
 

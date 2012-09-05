@@ -8,7 +8,7 @@ from search_utils import get_basic_conditions, get_filestem, get_iso_ids_list,\
                          get_all_source_ids
 from xsams_generators import xsams_preamble, xsams_sources, xsams_close,\
                              xsams_functions, xsams_environments,\
-                             xsams_species_with_states
+                             xsams_species_with_states, xsams_transitions
 
 prm_names = ['nu', 'Sw', 'A', 'gamma_air', 'gamma_self', 'n_air', 'delta_air']
 def get_src_ids(q_subwhere):
@@ -31,8 +31,8 @@ def get_src_ids(q_subwhere):
 
     sub_queries = []
     limit_query = ''
-    if settings.LIMIT is not None:
-        limit_query = ' LIMIT %d' % settings.LIMIT
+    if settings.XSAMS_LIMIT is not None:
+        limit_query = ' LIMIT %d' % settings.XSAMS_LIMIT
     for prm_name in prm_names:
         if prm_name == 'A':
             # the source for A is always the same as that for Sw, so skip
@@ -70,12 +70,12 @@ def get_states_rows(q_subwhere):
     st = time.time()
 
     limit_query = ''
-    if settings.LIMIT is not None:
-        limit_query = ' LIMIT %d' % settings.LIMIT
+    if settings.XSAMS_LIMIT is not None:
+        limit_query = ' LIMIT %d' % settings.XSAMS_LIMIT
     sub_queryp = 'SELECT DISTINCT(statep_id) AS sid FROM hitranlbl_trans t'\
-                 ' WHERE %s' % q_subwhere
+                 ' WHERE %s%s' % (q_subwhere, limit_query)
     sub_querypp = 'SELECT DISTINCT(statepp_id) AS sid FROM hitranlbl_trans t'\
-                 ' WHERE %s' % q_subwhere
+                 ' WHERE %s%s' % (q_subwhere, limit_query)
     
     st_query = 'SELECT st.iso_id, st.id, st.energy, st.g, st.nucspin_label,'\
           ' st.qns_xml FROM hitranlbl_state st, (SELECT DISTINCT(sid)'\
@@ -87,8 +87,47 @@ def get_states_rows(q_subwhere):
     cursor.execute(st_query)
 
     et = time.time()
-    print 'states retrieved in %.1f secs' % (et - st)
-    return cursor.fetchall()
+    nstates = cursor.rowcount
+    print '%d states retrieved in %.1f secs' % (nstates, (et - st))
+    return nstates, cursor.fetchall()
+
+def get_transitions_rows(q_subwhere):
+    """
+    Get the transitions and associated parameters requested by the query.
+
+    """
+
+    print 'Fetching transitions...'
+    st = time.time()
+
+    limit_query = ''
+    if settings.XSAMS_LIMIT is not None:
+        limit_query = ' LIMIT %d' % settings.XSAMS_LIMIT
+
+    # the fields to return from the query
+    q_fields = ['t.iso_id','t.id',  't.statep_id', 't.statepp_id',
+                't.multipole']
+    for prm_name in prm_names:
+        q_fields.extend(['p_%s.val' % prm_name, 'p_%s.err' % prm_name,
+                         'p_%s.source_id' % prm_name])
+    # the table joins
+    q_from_list = ['hitranlbl_trans t',]
+    for prm_name in prm_names:
+        q_from_list.append('prm_%s p_%s ON p_%s.trans_id=t.id' % (prm_name,
+                           prm_name, prm_name))
+    q_from = ' LEFT OUTER JOIN '.join(q_from_list)
+
+    t_query = 'SELECT %s FROM %s WHERE %s%s'\
+                 % (', '.join(q_fields), q_from, q_subwhere, limit_query)
+    print t_query
+
+    cursor = connection.cursor()
+    cursor.execute(t_query)
+
+    et = time.time()
+    ntrans = cursor.rowcount
+    print '%d transitions retrieved in %.1f secs' % (ntrans, (et - st))
+    return ntrans, cursor.fetchall()
 
 def do_search_xsams(form):
     """
@@ -141,8 +180,12 @@ def do_search_xsams(form):
     write_xsams(fo, xsams_functions)
 
     # Species (ie Isotopologues) and their States
-    rows = get_states_rows(q_subwhere)
+    nstates, rows = get_states_rows(q_subwhere)
     write_xsams(fo, xsams_species_with_states, rows=rows)
+
+    # Transitions
+    ntrans, rows = get_transitions_rows(q_subwhere)
+    write_xsams(fo, xsams_transitions, rows=rows)
 
     write_xsams(fo, xsams_close)
     fo.close()
@@ -150,12 +193,12 @@ def do_search_xsams(form):
     end_time = time.time()
     summary_html = ['<p>Here are the results of the query in "atmos_min"'
                     ' format</p>',]
-    if settings.LIMIT is not None:
+    if settings.XSAMS_LIMIT is not None:
         summary_html.append('<p>The number of returned transitions has '
-           'been limited to a maximum of %d</p>' % settings.LIMIT)
+           'been limited to a maximum of %d</p>' % settings.XSAMS_LIMIT)
 
     search_summary = {'summary_html': ''.join(summary_html)}
-    search_summary['ntrans'] = 0
+    search_summary['ntrans'] = ntrans
     search_summary['timed_at'] = '%.1f secs' % (end_time - start_time)
 
     # strip path from output filenames:

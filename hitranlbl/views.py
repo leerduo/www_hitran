@@ -11,7 +11,6 @@ import os
 import sys
 import time
 import datetime
-from itertools import chain
 
 # get a list of molecule objects with entries in the Trans table
 p_ids = Trans.objects.values('iso__molecule').distinct()

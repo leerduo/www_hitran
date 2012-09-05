@@ -9,12 +9,15 @@
 from django.conf import settings
 import urllib
 from hitranmeta.models import Iso, Source
-from xsams_utils import make_mandatory_tag, make_optional_tag,\
+from hitranlbl.models import State
+from xsams_utils import make_xsams_id, make_mandatory_tag, make_optional_tag,\
                         make_referenced_text_tag, make_datatype_tag
 from xsams_hitran_functions import xsams_functions
 from xsams_hitran_enivronments import xsams_environments
+from xsams_hitran_broadening import xsams_broadening_air,\
+                                    xsams_broadening_self, xsams_shifting_air  
 
-XSAMS_VERSION = '1.0'
+XSAMS_VERSION = settings.XSAMS_VERSION
 NODEID = settings.NODEID
 
 def xsams_preamble(timestamp):
@@ -44,9 +47,9 @@ def xsams_sources(sources):
 
     yield '<Sources>'
     for source in sources:
-        if source.source_type.source_type != "note":
-            for chunk in xsams_source(source):
-                yield chunk
+        #if source.source_type.source_type != "note":
+        for chunk in xsams_source(source):
+            yield chunk
     yield '</Sources>'
 
 def xsams_source(source):
@@ -58,8 +61,10 @@ def xsams_source(source):
 
     """
 
-    yield '<Source sourceID="B%s-%d">' % (NODEID, source.id)
+    yield '<Source sourceID="%s">' % (make_xsams_id('B', source.id),)
     author_list = source.authors.split(',')
+    if source.note:
+        yield '<Comments>%s</Comments>' % source.note
     yield '<Authors>'
     for author in author_list:
         yield '<Author><Name>%s</Name></Author>' % author
@@ -102,14 +107,13 @@ def get_molecule_cml_contents(cml):
         nscml.append(line)
     return '\n'.join(nscml)
 
-def xsams_molecular_chemical_species(iso_id):
+def xsams_molecular_chemical_species(iso):
     """
     Yield the XML for the MolecularChemicalSpecies element describing the
-    isotopologue identified in the database by the (global) ID iso_id.
+    isotopologue iso.
 
     """
 
-    iso = Iso.objects.filter(pk=iso_id).get()
     molecule = iso.molecule
     yield '<MolecularChemicalSpecies>'
     yield make_referenced_text_tag('OrdinaryStructuralFormula', iso.iso_name,
@@ -136,18 +140,37 @@ def make_nuclear_spin_isomer_tag(nucspin_label):
                     % nucspin_isomer
     return ''
 
-def xsams_molecular_state(id, energy, g, nucspin_label, qns_xml):
+def make_state_qns_xml(case_prefix, qns_xml):
+    """
+    Make and return the XML for this state's quantum numbers. In practice,
+    this means simple wrapping the pre-prepared qns_xml string in an
+    appropriately decorated <Case> tag. For that we need case_prefix.
+
+    """
+
+    if not qns_xml:
+        return ''
+    return '<Case xsi:type="%s:Case" caseID="%s" xmlns:%s="http://vamdc.org/'\
+           'xml/xsams/%s/cases/%s">\n%s</Case>' % (case_prefix, case_prefix,
+           case_prefix, XSAMS_VERSION, case_prefix, qns_xml)
+
+def xsams_molecular_state(id, energy, g, nucspin_label, qns_xml, zpe_stateRef,
+                          case_prefix):
     """
     Yield the XML for the State with properties given as arguments.
 
     """
 
-    yield '<MolecularState stateID="S%s-%d">' % (NODEID, id)
+    yield '<MolecularState stateID="%s">' % (make_xsams_id('S', id),)
     yield '<MolecularStateCharacterisation>'
-    yield make_datatype_tag('StateEnergy', energy)
+    yield make_datatype_tag('StateEnergy', energy, '1/cm',
+                    attrs={'energyOrigin': zpe_stateRef})
     yield make_optional_tag('TotalStatisticalWeight', g)
-    yield make_nuclear_spin_isomer_tag(nucspin_label)
+    nucspin_tag = make_nuclear_spin_isomer_tag(nucspin_label)
+    if nucspin_tag:
+        yield nucspin_tag
     yield '</MolecularStateCharacterisation>'
+    yield make_state_qns_xml(case_prefix, qns_xml)
     yield '</MolecularState>'
 
 def xsams_species_with_states(rows):
@@ -165,24 +188,104 @@ def xsams_species_with_states(rows):
     yield '<Molecules>'
 
     this_iso_id = 0
+    zpe_state_id = None
+    zpe_stateRef = 'S-MISSING-ZPE'
     for row in rows:
         iso_id, id, energy, g, nucspin_label, qns_xml = row
         if iso_id != this_iso_id:
+            # we've moved on to a new isotopologue
             if this_iso_id != 0:
                 # close the last Molecule tag unless we're on the first iso
                 yield '</Molecule>'
-            yield '<Molecule speciesID="X%s-%d">' % (NODEID, iso_id)
-            for chunk in xsams_molecular_chemical_species(iso_id):
+            yield '<Molecule speciesID="%s">' % (make_xsams_id('X', iso_id),)
+            # get the Iso object from the database and write its XML
+            iso = Iso.objects.filter(pk=iso_id).get()
+            for chunk in xsams_molecular_chemical_species(iso):
                 yield chunk
             this_iso_id = iso_id
+            case_prefix = iso.case.case_prefix
+            # we also need its zero-point state - get its ID and write the
+            # zero-point state XML
+            zpe_state_id = iso.ZPE_state_id
+            # the XSAMS stateRef is used to refer to the zero-point state:
+            zpe_stateRef = make_xsams_id('S', zpe_state_id)
+            yield '<!-- This is the zero-point energy state for %s -->'\
+                            % iso.iso_name
+            zpe_state_data = State.objects.filter(pk=zpe_state_id).values_list(
+                          'id', 'energy', 'g', 'nucspin_label', 'qns_xml')[0]
+            for chunk in xsams_molecular_state(*zpe_state_data,
+                           zpe_stateRef=zpe_stateRef, case_prefix=case_prefix):
+                yield chunk
+        # business as usual: write the state's XML...
+        if id == zpe_state_id:
+            # unless it's the zero-point state, which has already been written
+            continue
         for chunk in xsams_molecular_state(id, energy, g, nucspin_label,
-                                           qns_xml):
+                                           qns_xml, zpe_stateRef, case_prefix):
             yield chunk
 
     yield '</Molecule>'
     yield '</Molecules>'
     yield '</Species>'
-        
+
+def xsams_transitions(rows):
+    """
+    Yield the XML for the Transitions returned by the query.
+
+    Attributes:
+    rows: a tuple of the rows returned by the database query on the
+    hitranlbl_states table. Each row is itself a tuple with the contents:
+    (global_)iso_id, (transition)id, statep_id, statepp_id, multipole, [nu],
+    [Sw], [A], [gamma_air], [gamma_self], [n_air], [delta_air], where the
+    parameter [X] is expressed in three columns: val, err, source_id.
+
+    sources: a list of the Source objects referred to in this XSAMS file
+
+    """
+
+    yield '<Processes>'
+    yield '<Radiative>'
+
+    for row in rows:
+        iso_id, id, statep_id, statepp_id, multipole,\
+        nu_val, nu_err, nu_source_id,\
+        Sw_val, Sw_err, Sw_source_id,\
+        A_val, A_err, A_source_id,\
+        gamma_air_val, gamma_air_err, gamma_air_source_id,\
+        gamma_self_val, gamma_self_err, gamma_self_source_id,\
+        n_air_val, n_air_err, n_air_source_id,\
+        delta_air_val, delta_air_err, delta_air_source_id = row
+        yield '<RadiativeTransition id="%s">' % (make_xsams_id('P', id),)
+        yield '<EnergyWavelength>'
+        yield make_datatype_tag('Wavenumber', nu_val, '1/cm', error=nu_err,
+                src_list = [nu_source_id,])
+        yield '</EnergyWavelength>'
+        yield make_mandatory_tag('UpperStateRef', '%s' % (
+                                        make_xsams_id('S', statep_id),))
+        yield make_mandatory_tag('LowerStateRef', '%s' % (
+                                        make_xsams_id('S', statepp_id),))
+        yield '<Probability>'
+        yield make_datatype_tag('TransitionProbabilityA', A_val, '1/cm',
+                        error=A_err, src_list = [A_source_id,])
+        yield '</Probability>'
+
+        # air-broadening
+        for chunk in xsams_broadening_air(gamma_air_val, gamma_air_err,
+                      gamma_air_source_id, n_air_val, n_air_err,
+                      n_air_source_id):
+            yield chunk
+        # self-broadening
+        for chunk in xsams_broadening_self(gamma_self_val, gamma_self_err,
+                      gamma_self_source_id):
+            yield chunk
+        # air-induced pressure shift
+        for chunk in xsams_shifting_air(delta_air_val, delta_air_err,
+                      delta_air_source_id):
+            yield chunk
+        yield '</RadiativeTransition>'
+
+    yield '</Radiative>'
+    yield '</Processes>'
 
 def xsams_close():
     yield '</XSAMSData>'
