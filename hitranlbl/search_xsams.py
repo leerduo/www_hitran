@@ -6,6 +6,8 @@ from django.db import connection
 from hitranmeta.models import Iso, Source
 from search_utils import get_basic_conditions, get_filestem, get_iso_ids_list,\
                          get_all_source_ids
+from xsams_queries import get_xsams_src_query, get_xsams_states_query,\
+                          get_xsams_trans_query
 from xsams_generators import xsams_preamble, xsams_sources, xsams_close,\
                              xsams_functions, xsams_environments,\
                              xsams_species_with_states, xsams_transitions
@@ -29,24 +31,7 @@ def get_src_ids(q_subwhere):
     print 'Fetching sources...'
     st = time.time()
 
-    sub_queries = []
-    limit_query = ''
-    if settings.XSAMS_LIMIT is not None:
-        limit_query = ' LIMIT %d' % settings.XSAMS_LIMIT
-    for prm_name in prm_names:
-        if prm_name == 'A':
-            # the source for A is always the same as that for Sw, so skip
-            continue
-        sub_queries.append(
-                'SELECT DISTINCT(p_%s.source_id) AS src_id'
-                ' FROM hitranlbl_trans t, prm_%s p_%s WHERE %s AND'
-                ' p_%s.trans_id=t.id%s' % (prm_name, prm_name, prm_name,
-                                           q_subwhere, prm_name, limit_query)
-                          )
-    src_query = ['SELECT DISTINCT(src_id) FROM (',]
-    src_query.append(' UNION '.join(sub_queries))
-    src_query.append(') x')  # "Every derived table must have its own alias"
-    src_query = ''.join(src_query)
+    src_query = get_xsams_src_query(q_subwhere, prm_names)
     print src_query
 
     cursor = connection.cursor()
@@ -69,18 +54,7 @@ def get_states_rows(q_subwhere):
     print 'Fetching states...'
     st = time.time()
 
-    limit_query = ''
-    if settings.XSAMS_LIMIT is not None:
-        limit_query = ' LIMIT %d' % settings.XSAMS_LIMIT
-    sub_queryp = 'SELECT DISTINCT(statep_id) AS sid FROM hitranlbl_trans t'\
-                 ' WHERE %s%s' % (q_subwhere, limit_query)
-    sub_querypp = 'SELECT DISTINCT(statepp_id) AS sid FROM hitranlbl_trans t'\
-                 ' WHERE %s%s' % (q_subwhere, limit_query)
-    
-    st_query = 'SELECT st.iso_id, st.id, st.energy, st.g, st.nucspin_label,'\
-          ' st.qns_xml FROM hitranlbl_state st, (SELECT DISTINCT(sid)'\
-          ' FROM (%s UNION %s) sids, hitranlbl_state s WHERE sids.sid=s.id)'\
-          ' qst WHERE st.id=sid ORDER BY st.iso_id' % (sub_queryp, sub_querypp)
+    st_query = get_xsams_states_query(q_subwhere)
     print st_query
     
     cursor = connection.cursor()
@@ -100,25 +74,7 @@ def get_transitions_rows(q_subwhere):
     print 'Fetching transitions...'
     st = time.time()
 
-    limit_query = ''
-    if settings.XSAMS_LIMIT is not None:
-        limit_query = ' LIMIT %d' % settings.XSAMS_LIMIT
-
-    # the fields to return from the query
-    q_fields = ['t.iso_id','t.id',  't.statep_id', 't.statepp_id',
-                't.multipole']
-    for prm_name in prm_names:
-        q_fields.extend(['p_%s.val' % prm_name, 'p_%s.err' % prm_name,
-                         'p_%s.source_id' % prm_name])
-    # the table joins
-    q_from_list = ['hitranlbl_trans t',]
-    for prm_name in prm_names:
-        q_from_list.append('prm_%s p_%s ON p_%s.trans_id=t.id' % (prm_name,
-                           prm_name, prm_name))
-    q_from = ' LEFT OUTER JOIN '.join(q_from_list)
-
-    t_query = 'SELECT %s FROM %s WHERE %s%s'\
-                 % (', '.join(q_fields), q_from, q_subwhere, limit_query)
+    t_query = get_xsams_trans_query(q_subwhere, prm_names)
     print t_query
 
     cursor = connection.cursor()
@@ -191,7 +147,7 @@ def do_search_xsams(form):
     fo.close()
 
     end_time = time.time()
-    summary_html = ['<p>Here are the results of the query in "atmos_min"'
+    summary_html = ['<p>Here are the results of the query in XSAMS'
                     ' format</p>',]
     if settings.XSAMS_LIMIT is not None:
         summary_html.append('<p>The number of returned transitions has '

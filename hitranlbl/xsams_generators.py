@@ -20,7 +20,7 @@ from xsams_hitran_broadening import xsams_broadening_air,\
 XSAMS_VERSION = settings.XSAMS_VERSION
 NODEID = settings.NODEID
 
-def xsams_preamble(timestamp):
+def xsams_preamble(timestamp=None):
     """
     The XML processing instruction and root element, specifying the XSAMS
     version and Schema location.
@@ -33,8 +33,9 @@ def xsams_preamble(timestamp):
     yield ' xmlns:cml="http://www.xml-cml.org/schema"'
     yield ' xsi:schemaLocation="http://vamdc.org/xml/xsams/%s %s">'\
             % (XSAMS_VERSION, settings.SCHEMA_LOCATION)
-    # TODO convert no. of secs to date and time
-    yield '<!-- TIMESTAMP: %s -->' % timestamp
+    if timestamp:
+        # TODO convert no. of secs to date and time
+        yield '<!-- TIMESTAMP: %s -->' % timestamp
 
 def xsams_sources(sources):
     """

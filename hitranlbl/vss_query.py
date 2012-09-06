@@ -5,6 +5,7 @@
 
 from caseless_dict import CaselessDict
 from string import lower
+from datetime import date
 import sqlparse
 import logging
 log = logging.getLogger('vamdc.hitran_node')
@@ -12,6 +13,8 @@ from tap_utils import get_base_URL
 from vamdc_standards import REQUESTABLES
 from dictionaries import restrictable_types
 from hitranmeta.models import Iso
+from xsams_queries import get_xsams_src_query, get_xsams_states_query,\
+                          get_xsams_trans_query
 
 class VSSQuery(object):
     """
@@ -99,6 +102,9 @@ class VSSQuery(object):
     def make_sql_queries(self):
         """
         Turn the VSS query into a series of SQL queries on the database.
+        The returned queries are in a dictionary, keyed by 'src_query',
+        'st_query', 't_query' for the sources query, the states query, and
+        the transitions query respectively.
 
         """
 
@@ -133,32 +139,72 @@ class VSSQuery(object):
                 raise Exception('Invalid value for restrictable %s: %s'
                                 % (restrictable, s_rvals))
 
+            # translate the VAMDC restrictable keywords into the
+            # appropriate of the hitranlbl_trans table in the HITRAN database
+            # the hitranlbl_trans table must be aliased to 't'. Note that
+            # node_restrictions[2] is *always a list*, unlike
+            # restrictions[ri][2]
             if restrictable == 'radtranswavenumber':
-                node_restrictions[ri] = ['nu', op] + s_rvals
+                node_restrictions['r%s' % ri] = ['t.nu', op] + [s_rvals,]
             elif restrictable == 'radtranswavelength':
                 op, s_nus = self.lambda_to_nu(op, s_rvals)
-                node_restrictions[ri] = ['nu', op] + s_nus
+                node_restrictions['r%s' % ri] = ['t.nu', op] + [s_nus,]
             elif restrictable == 'radtransprobability':
-                node_restrictions[ri] = ['A', op] + s_rvals
+                node_restrictions['r%s' % ri] = ['t.A', op] + [s_rvals,]
             elif restrictable in ('inchikey', 'moleculeinchikey'):
                 op, s_iso_ids = self.get_isos_from_other(op, s_rvals,
                                                  self.iso_from_inchikey)
-                node_restrictions[ri] = 'iso_id', op, s_iso_ids
+                node_restrictions['r%s' % ri] = 't.iso_id', op, s_iso_ids
             elif restrictable == 'moleculestoichiometricformula':
                 op, s_iso_ids = self.get_isos_from_other(op, s_rvals,
                                                  self.iso_from_molec_stoich)
-                node_restrictions[ri] = 'iso_id', op, s_iso_ids
+                node_restrictions['r%s' % ri] = 't.iso_id', op, s_iso_ids
             elif restrictable == 'moleculechemicalname':
                 op, s_iso_ids = self.get_isos_from_other(op, s_rvals,
                                                  self.iso_from_molec_name)
-                node_restrictions[ri] = 'iso_id', op, s_iso_ids
+                node_restrictions['r%s' % ri] = 't.iso_id', op, s_iso_ids
             else:
-                node_restrictions[ri] = restrictions[ri]
+                raise Exception('Unsupported or invalid restrictable keyword:'
+                                ' %s' % restrictable)
 
-        print 'node_restrictions:', node_restrictions
+        # add restrictions on valid_to, valid_from dates:
+        # XXX Hard-code these to the current date, because there's currently
+        # no keyword (is there?) for valid_on date in the VAMDC standards.
+        today = date.today().strftime('%Y-%m-%d')
+        logic.extend(['and', 'r_valid_from', 'and', 'r_valid_to'])
+        node_restrictions['r_valid_from'] = ['t.valid_from','<=', [today,]]
+        node_restrictions['r_valid_to'] = ['t.valid_to','>', [today,]]
 
-        return {}
+        q_where = []
+        for x in logic:
+            if x in node_restrictions.keys():
+                q_where.append(self.make_sql_restriction(node_restrictions[x]))
+            else:
+                q_where.append(x)
+        q_where = ' '.join(q_where)
+        print q_where
 
+        queries = {'src_query': get_xsams_src_query,
+                   'st_query': get_xsams_states_query,
+                   't_query': get_xsams_trans_query}
+        return queries
+
+    def make_sql_restriction(self, node_restriction):
+        """
+        Turn the node_restriction, a tuple of (field, operator, values) into
+        a valid SQL restriction.
+
+        """
+
+        print 'XXX:', node_restriction
+        name, op, args = node_restriction
+
+        if len(args) > 1:
+            s_val = '(%s)' % ', '.join(args)
+        else:
+            s_val = args[0]
+        return '%s %s %s' % (name, op, s_val)
+        
     def lambda_to_nu(self, op, lambdas):
         nu_list = []
         has_parentheses = False
@@ -230,12 +276,7 @@ class VSSQuery(object):
                     op = 'not in'
             else:
                 return op, iso_ids
-        #return op, '(%s)' % (', '.join(iso_ids),)
-        ret_dict = ['(',]
-        ret_dict.extend(iso_ids)
-        ret_dict.append(')')
-        return op, ret_dict
-        #return op, '(', iso_ids, ')'
+        return op, iso_ids
 
     def check_rvals_type(self, s_rvals, rtype):
         """
