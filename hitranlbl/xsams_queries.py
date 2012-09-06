@@ -4,6 +4,8 @@
 # in XSAMS format.
 from django.conf import settings
 
+prm_names = ['nu', 'Sw', 'A', 'gamma_air', 'gamma_self', 'n_air', 'delta_air']
+
 def get_limit_query():
     """
     The LIMIT clause, if we're limiting the number of transitions to
@@ -15,7 +17,7 @@ def get_limit_query():
         limit_query = ' LIMIT %d' % settings.XSAMS_LIMIT
     return limit_query
 
-def get_xsams_src_query(q_subwhere, prm_names):
+def get_xsams_src_query(q_subwhere):
     """
     Make and return the SQL query for the source IDs of parameters to be
     returned by the query, which will be written to the XSAMS output format.
@@ -23,8 +25,6 @@ def get_xsams_src_query(q_subwhere, prm_names):
     Arguments:
     q_subwhere: the main "WHERE" clause on the hitranlbl_trans table,
     representing the restrictions on the search
-    prm_names: a list of the names of the parameters that will be searched
-    for - these tables will be joined to hitranlbl_trans in the SQL query
 
     """
 
@@ -70,16 +70,14 @@ def get_xsams_states_query(q_subwhere):
           ' qst WHERE st.id=sid ORDER BY st.iso_id' % (sub_queryp, sub_querypp)
     return st_query
 
-def get_xsams_trans_query(q_subwhere, prm_names):
+def get_xsams_trans_query(q_subwhere):
     """
-    Make and return the SQL query for the states to be returned by the query,
-    which will be written to the XSAMS output format.
+    Make and return the SQL query for the transitions to be returned by the
+    query, which will be written to the XSAMS output format.
 
     Arguments:
     q_subwhere: the main "WHERE" clause on the hitranlbl_trans table,
     representing the restrictions on the search
-    prm_names: a list of the names of the parameters that will be searched
-    for - these tables will be joined to hitranlbl_trans in the SQL query
 
     """
 
@@ -100,3 +98,38 @@ def get_xsams_trans_query(q_subwhere, prm_names):
     t_query = 'SELECT %s FROM %s WHERE %s%s'\
                  % (', '.join(q_fields), q_from, q_subwhere, limit_query)
     return t_query
+
+def get_xsams_trans_count_query(q_subwhere, truncated=False):
+    """
+    Make and return an SQL query to count the number of transitions to be
+    returned by the main query. If truncated is False, the number returned
+    is the untruncated number of transitions, otherwise the limit set by
+    settings.XSAMS_LIMIT is invoked.
+
+    Arguments:
+    q_subwhere: the main "WHERE" clause on the hitranlbl_trans table,
+    representing the restrictions on the search
+
+    """
+
+    limit_query = ''
+    if truncated:
+        limit_query = get_limit_query()
+    tc_query = 'SELECT COUNT(*) FROM hitranlbl_trans t WHERE %s%s'\
+                    % (q_subwhere, limit_query)
+    return tc_query
+
+def get_xsams_isos_count_query(q_subwhere):
+    """
+    Make and return an SQL query to count the number of isotopologues that
+    will appear in the main query results set.
+
+    Arguments:
+    q_subwhere: the main "WHERE" clause on the hitranlbl_trans table,
+    representing the restrictions on the search
+
+    """
+    limit_query = get_limit_query()
+    ic_query = 'SELECT COUNT(DISTINCT(t.iso_id)) FROM hitranlbl_trans t WHERE'\
+               ' %s%s' % (q_subwhere, limit_query)
+    return ic_query

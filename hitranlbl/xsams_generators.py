@@ -8,6 +8,7 @@
 # Generators for writing the various chunks of an XSAMS document.
 from django.conf import settings
 import urllib
+from xml.sax.saxutils import escape
 from hitranmeta.models import Iso, Source
 from hitranlbl.models import State
 from xsams_utils import make_xsams_id, make_mandatory_tag, make_optional_tag,\
@@ -31,7 +32,7 @@ def xsams_preamble(timestamp=None):
     yield '<XSAMSData xmlns="http://vamdc.org/xml/xsams/%s"' % XSAMS_VERSION
     yield ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
     yield ' xmlns:cml="http://www.xml-cml.org/schema"'
-    yield ' xsi:schemaLocation="http://vamdc.org/xml/xsams/%s %s">'\
+    yield ' xsi:schemaLocation="http://vamdc.org/xml/xsams/%s %s">\n'\
             % (XSAMS_VERSION, settings.SCHEMA_LOCATION)
     if timestamp:
         # TODO convert no. of secs to date and time
@@ -46,12 +47,12 @@ def xsams_sources(sources):
 
     """
 
-    yield '<Sources>'
+    yield '<Sources>\n'
     for source in sources:
         #if source.source_type.source_type != "note":
         for chunk in xsams_source(source):
             yield chunk
-    yield '</Sources>'
+    yield '</Sources>\n'
 
 def xsams_source(source):
     """
@@ -65,12 +66,12 @@ def xsams_source(source):
     yield '<Source sourceID="%s">' % (make_xsams_id('B', source.id),)
     author_list = source.authors.split(',')
     if source.note:
-        yield '<Comments>%s</Comments>' % source.note
+        yield '<Comments>%s</Comments>' % escape(source.note)
     yield '<Authors>'
     for author in author_list:
         yield '<Author><Name>%s</Name></Author>' % author
     yield '</Authors>'
-    yield make_mandatory_tag('Title', source.title, '[This source does'
+    yield make_mandatory_tag('Title', escape(source.title), '[This source does'
                                         ' not have a title]')
     yield make_mandatory_tag('Category', source.source_type.xsams_category, '')
     # XXX what to do when the year is missing?
@@ -83,7 +84,7 @@ def xsams_source(source):
     yield make_optional_tag('UniformResourceIdentifier',
                             urllib.quote(source.url))
     yield make_optional_tag('DigitalObjectIdentifier', source.doi)
-    yield '</Source>'
+    yield '</Source>\n'
 
 # TODO - replace this with something better (using the minidom?)
 def get_molecule_cml_contents(cml):
@@ -131,14 +132,17 @@ def xsams_molecular_chemical_species(iso):
     yield make_optional_tag('InChIKey', iso.InChIKey)
     yield make_optional_tag('MoleculeStructure',
                             get_molecule_cml_contents(iso.cml))
-    yield '</MolecularChemicalSpecies>'
+    yield '</MolecularChemicalSpecies>\n'
 
 nucspin_isomers = {'o': 'ortho', 'm': 'meta', 'p': 'para'}
-def make_nuclear_spin_isomer_tag(nucspin_label):
+def make_nuclear_spin_isomer_tag(nucspin_label, zpe_stateRef):
+    # XXX for now, refer to the ZPE of the molecule rather than the actual
+    # lowest energy level of this particular nuclear spin isomer...
     nucspin_isomer = nucspin_isomers.get(nucspin_label)
     if nucspin_isomer:
-        return '<NuclearSpinIsomer><Name>%s</Name></NuclearSpinIsomer>'\
-                    % nucspin_isomer
+        return '<NuclearSpinIsomer lowestEnergyStateRef="%s">'\
+               '<Name>%s</Name></NuclearSpinIsomer>'\
+                    % (zpe_stateRef, nucspin_isomer)
     return ''
 
 def make_state_qns_xml(case_prefix, qns_xml):
@@ -164,15 +168,16 @@ def xsams_molecular_state(id, energy, g, nucspin_label, qns_xml, zpe_stateRef,
 
     yield '<MolecularState stateID="%s">' % (make_xsams_id('S', id),)
     yield '<MolecularStateCharacterisation>'
-    yield make_datatype_tag('StateEnergy', energy, '1/cm',
-                    attrs={'energyOrigin': zpe_stateRef})
+    if energy is not None:
+        yield make_datatype_tag('StateEnergy', energy, '1/cm',
+                        attrs={'energyOrigin': zpe_stateRef})
     yield make_optional_tag('TotalStatisticalWeight', g)
-    nucspin_tag = make_nuclear_spin_isomer_tag(nucspin_label)
+    nucspin_tag = make_nuclear_spin_isomer_tag(nucspin_label, zpe_stateRef)
     if nucspin_tag:
         yield nucspin_tag
-    yield '</MolecularStateCharacterisation>'
+    yield '</MolecularStateCharacterisation>\n'
     yield make_state_qns_xml(case_prefix, qns_xml)
-    yield '</MolecularState>'
+    yield '</MolecularState>\n'
 
 def xsams_species_with_states(rows):
     """
@@ -244,8 +249,8 @@ def xsams_transitions(rows):
 
     """
 
-    yield '<Processes>'
-    yield '<Radiative>'
+    yield '<Processes>\n'
+    yield '<Radiative>\n'
 
     for row in rows:
         iso_id, id, statep_id, statepp_id, multipole,\
@@ -256,11 +261,11 @@ def xsams_transitions(rows):
         gamma_self_val, gamma_self_err, gamma_self_source_id,\
         n_air_val, n_air_err, n_air_source_id,\
         delta_air_val, delta_air_err, delta_air_source_id = row
-        yield '<RadiativeTransition id="%s">' % (make_xsams_id('P', id),)
+        yield '<RadiativeTransition id="%s">\n' % (make_xsams_id('P', id),)
         yield '<EnergyWavelength>'
         yield make_datatype_tag('Wavenumber', nu_val, '1/cm', error=nu_err,
                 src_list = [nu_source_id,])
-        yield '</EnergyWavelength>'
+        yield '</EnergyWavelength>\n'
         yield make_mandatory_tag('UpperStateRef', '%s' % (
                                         make_xsams_id('S', statep_id),))
         yield make_mandatory_tag('LowerStateRef', '%s' % (
@@ -268,7 +273,7 @@ def xsams_transitions(rows):
         yield '<Probability>'
         yield make_datatype_tag('TransitionProbabilityA', A_val, '1/cm',
                         error=A_err, src_list = [A_source_id,])
-        yield '</Probability>'
+        yield '</Probability>\n'
 
         # air-broadening
         for chunk in xsams_broadening_air(gamma_air_val, gamma_air_err,
@@ -283,10 +288,10 @@ def xsams_transitions(rows):
         for chunk in xsams_shifting_air(delta_air_val, delta_air_err,
                       delta_air_source_id):
             yield chunk
-        yield '</RadiativeTransition>'
+        yield '</RadiativeTransition>\n'
 
-    yield '</Radiative>'
-    yield '</Processes>'
+    yield '</Radiative>\n'
+    yield '</Processes>\n'
 
 def xsams_close():
     yield '</XSAMSData>'

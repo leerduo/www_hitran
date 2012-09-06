@@ -35,6 +35,6 @@ def add_headers(headers, response):
             response['VAMDC-%s' % header] = headers[header]
     return response
 
-def strip_quotes(s):
-    """ Strip the outside quotes from string s, if present """
-    return s.strip('"\'')
+def dquote(s):
+    """ Return the string s, surrounded by double quotes. """
+    return '"%s"' % s

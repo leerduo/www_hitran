@@ -9,12 +9,13 @@ from datetime import date
 import sqlparse
 import logging
 log = logging.getLogger('vamdc.hitran_node')
-from tap_utils import get_base_URL
+from tap_utils import get_base_URL, dquote
 from vamdc_standards import REQUESTABLES
 from dictionaries import restrictable_types
 from hitranmeta.models import Iso
 from xsams_queries import get_xsams_src_query, get_xsams_states_query,\
-                          get_xsams_trans_query
+                          get_xsams_trans_query, get_xsams_trans_count_query,\
+                          get_xsams_isos_count_query
 
 class VSSQuery(object):
     """
@@ -172,8 +173,10 @@ class VSSQuery(object):
         # no keyword (is there?) for valid_on date in the VAMDC standards.
         today = date.today().strftime('%Y-%m-%d')
         logic.extend(['and', 'r_valid_from', 'and', 'r_valid_to'])
-        node_restrictions['r_valid_from'] = ['t.valid_from','<=', [today,]]
-        node_restrictions['r_valid_to'] = ['t.valid_to','>', [today,]]
+        node_restrictions['r_valid_from'] = ['t.valid_from','<=',
+                                             [dquote(today),]]
+        node_restrictions['r_valid_to'] = ['t.valid_to','>',
+                                           [dquote(today),]]
 
         q_where = []
         for x in logic:
@@ -182,11 +185,13 @@ class VSSQuery(object):
             else:
                 q_where.append(x)
         q_where = ' '.join(q_where)
-        print q_where
 
-        queries = {'src_query': get_xsams_src_query,
-                   'st_query': get_xsams_states_query,
-                   't_query': get_xsams_trans_query}
+        queries = {'src_query': get_xsams_src_query(q_where),
+                   'st_query': get_xsams_states_query(q_where),
+                   't_query': get_xsams_trans_query(q_where),
+                   'tc_query': get_xsams_trans_count_query(q_where),
+                   'ic_query': get_xsams_isos_count_query(q_where),
+                  }
         return queries
 
     def make_sql_restriction(self, node_restriction):
@@ -196,7 +201,6 @@ class VSSQuery(object):
 
         """
 
-        print 'XXX:', node_restriction
         name, op, args = node_restriction
 
         if len(args) > 1:

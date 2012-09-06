@@ -14,9 +14,23 @@ from vamdc_standards import HEADERS, REQUESTABLES, STANDARDS_VERSION
 from tap_utils import throw_500, get_base_URL
 from vss_query import VSSQuery
 import dictionaries
+from search_xsams import get_src_ids, xsams_generator, get_transitions_count,\
+                         get_isos_count
+from search_utils import get_all_source_ids
+from hitranmeta.models import Source
 
 NODEID = settings.NODEID
 
+def add_headers(headers, response):
+    """
+    Attach the headers in the dictionary headers to the response object
+    and return it.
+
+    """
+
+    for header_name in headers:
+        response['VAMDC-%s' % header_name] = headers[header_name]
+    return response
 
 def sync(request):
     log.info('Request from %s: %s' % (request.META['REMOTE_ADDR'],
@@ -26,12 +40,6 @@ def sync(request):
         error_message = 'Invalid VSS query: %s' % vss_query.error_message
         log.error(error_message)
         return throw_500(status=400, error_message=error_message)
-
-    print 'vss_query is:', vss_query
-    print 'vss_query.requestables:', vss_query.requestables
-    print 'vss_query.where:', vss_query.where
-    print 'vss_query.parsed_sql:', vss_query.parsed_sql
-    print 'vss_query.parsed_sql.columns:', vss_query.parsed_sql.columns
 
     # translate the VSS query into a series of SQL queries on the
     # database tables:
@@ -46,8 +54,47 @@ def sync(request):
         log.info('I got nothing back from make_sql_queries(). Returning 204.')
         return HttpResponse('', status=204)
 
-    c = {'search_summary': 'XSAMS search...'}
-    return render_to_response('lbl_searchresults.html', c)
+    # fetch the sources before starting the generator, so we can
+    # populate the COUNT-SOURCES header
+    source_ids = get_src_ids(sql_queries['src_query'])
+    # we need all the source_ids, even those belonging to sources cited
+    # within notes, etc.
+    all_source_ids = get_all_source_ids(source_ids)
+    all_sources = Source.objects.filter(pk__in=all_source_ids)
+    nsources = all_sources.count()
+    log.debug('nsources = %d' % nsources)
+    ntrans = get_transitions_count(sql_queries['tc_query'])
+    log.debug('ntrans = %d' % ntrans)
+    # if the query results have been truncated, calculate a percentage
+    truncated_percent = None
+    if settings.XSAMS_LIMIT and ntrans > settings.XSAMS_LIMIT:
+        truncated_percent = float(settings.XSAMS_LIMIT) / ntrans * 100.
+        ntrans = settings.XSAMS_LIMIT
+        log.debug('truncated_percent = %.1f' % truncated_percent)
+
+    nisos = get_isos_count(sql_queries['ic_query'])
+
+    # fill the headers dictionary with some header info
+    headers = {}
+    headers['COUNT-SPECIES'] = nisos
+    headers['COUNT-MOLECULES'] = nisos
+    headers['COUNT-SOURCES'] = nsources
+    headers['COUNT-RADIATIVE'] = ntrans
+    # rather than counting the states, or pre-fetching them, estimate:
+    headers['COUNT-STATES'] = int(0.435 * ntrans)
+    if truncated_percent:
+        headers['TRUNCATED'] = truncated_percent
+
+    # OK, then - fire up the generator and hand it to HttpResponse: 
+    timestamp = datetime.datetime.now().isoformat()
+    generator = xsams_generator(sql_queries, timestamp, all_sources)
+    response = HttpResponse(generator, 'text/xml')
+    response['Content-Disposition'] = 'attachment; filename=%s-%s.%s'\
+                % (NODEID, timestamp, vss_query.format)
+    # attach headers
+    response = add_headers(headers, response)
+
+    return response
 
 def capabilities(request):
     c = RequestContext(request, {'accessURL': get_base_URL(request),
