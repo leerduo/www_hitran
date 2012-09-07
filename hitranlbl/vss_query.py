@@ -197,7 +197,7 @@ class VSSQuery(object):
     def make_sql_restriction(self, node_restriction):
         """
         Turn the node_restriction, a tuple of (field, operator, values) into
-        a valid SQL restriction.
+        the string representation of a valid SQL restriction.
 
         """
 
@@ -210,6 +210,24 @@ class VSSQuery(object):
         return '%s %s %s' % (name, op, s_val)
         
     def lambda_to_nu(self, op, lambdas):
+        """
+        Convert the arguments of a selection of wavelength (in Å) to the
+        corresponding selection on wavenumber (in cm-1). Adjust the operator
+        in the query fragment accordingly (e.g. '<' to '>').
+
+        Arguments:
+        op: the operator in the query fragment (e.g. '<', 'in', '>=', etc.)
+        lambdas: a list of arguments (wavelengths) to the query fragment.
+        Typically, just one value (for operators '<', '>', '=', '>=', '<=',
+        etc.), but could be a list (e.g. for 'in' operator).
+
+        Returns:
+        a tuple (op, ret_list) of op, the new operator applying to the query
+        fragment on wavenumber and ret_list, a list of wavenumber values
+        corresponding to the query.
+
+        """
+
         nu_list = []
         has_parentheses = False
         if lambdas[0] == '(' and lambdas[-1] == ')':
@@ -235,20 +253,34 @@ class VSSQuery(object):
             else:
                 return op, nu_list
         #return op, '(%s)' % (', '.join(nu_list),)
-        ret_dict = ['(',]
-        ret_dict.extend(nu_list)
-        ret_dict.append(')')
-        return op, ret_dict
+        ret_list = ['(',]
+        ret_list.extend(nu_list)
+        ret_list.append(')')
+        return op, ret_list
 
     def iso_from_inchikey(self, inchikey):
+        """
+        Return a list of isotopologue IDs matching the provided InChIKey.
+
+        """
         return Iso.objects.filter(InChIKey=
                     inchikey).values_list('id', flat=True)
 
     def iso_from_molec_stoich(self, stoichiometric_formula):
+        """
+        Return a list of isotopologue IDs matching the provided 
+        molecular (ie isotope-independent) stoichiometric formula.
+
+        """
         return Iso.objects.filter(molecule__stoichiometric_formula=
                     stoichiometric_formula).values_list('id', flat=True)
 
     def iso_from_molec_name(self, name):
+        """
+        Return a list of isotopologue IDs matching the provided 
+        molecule name (ie common chemical name).
+
+        """
         return Iso.objects.filter(molecule__moleculename__name=
                     name).values_list('id', flat=True)
 

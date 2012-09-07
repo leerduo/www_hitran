@@ -33,6 +33,16 @@ def add_headers(headers, response):
     return response
 
 def sync(request):
+    """
+    Handle a synchronous query on the database made by posting a VSS
+    query to the VAMDC HITRAN node url. After verifying the query is
+    well-formed, a generator for the XSAMS document is set up and passed
+    to HttpResponse as an attachment for the user to download. Headers
+    including some meta-data relating to the query results are added to
+    the response object.
+
+    """
+
     log.info('Request from %s: %s' % (request.META['REMOTE_ADDR'],
                                       request.REQUEST))
     vss_query = VSSQuery(request)
@@ -97,6 +107,11 @@ def sync(request):
     return response
 
 def capabilities(request):
+    """
+    Render the capabilities.xml document providing some information about
+    this node and what can be queried at it.
+
+    """
     c = RequestContext(request, {'accessURL': get_base_URL(request),
                                  'RESTRICTABLES': dictionaries.RESTRICTABLES,
                                  'RETURNABLES': dictionaries.RETURNABLES,
@@ -106,6 +121,11 @@ def capabilities(request):
     return render_to_response('tap/capabilities.xml', c, mimetype='text/xml')
 
 def availability(request):
+    """
+    Render the availability.xml document used to check the node is up
+    and running, and providing its URL.
+
+    """
     c = RequestContext(request, {'accessURL': get_base_URL(request)})
     return render_to_response('tap/availability.xml', c, mimetype='text/xml')
 
