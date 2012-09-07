@@ -139,7 +139,7 @@ def get_fmts(form):
     sep_len = len(form.field_separator)
     sep_ffmt = ', '
     if sep_len > 0:
-        sep_ffmt = ', %dX' % len(sep_len)
+        sep_ffmt = ', %dX' % sep_len
     s_iffmts = sep_ffmt.join(iffmts)
     return s_cfmt, s_iffmts
 
