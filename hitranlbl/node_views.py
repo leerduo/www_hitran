@@ -103,7 +103,7 @@ def capabilities(request):
                                  'SOFTWARE_VERSION': settings.SOFTWARE_VERSION,
                                 # XXX omit EXAMPLE_QUERIES, for now
                                 })
-    return render_to_reponse('tap/capabilities.xml', c, mimetype='text/xml')
+    return render_to_response('tap/capabilities.xml', c, mimetype='text/xml')
 
 def availability(request):
     c = RequestContext(request, {'accessURL': get_base_URL(request)})

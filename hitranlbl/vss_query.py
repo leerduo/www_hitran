@@ -218,7 +218,9 @@ class VSSQuery(object):
             if lamda in ('(', ')'):
                 continue
             try:
-                nu = 1./float(lamda)
+                # lambda in Å to nu in cm-1
+                nu = 1.e8/float(lamda)
+                print '%f A = %f cm-1' % (float(lamda), nu)
             except ZeroDivisionError:
                 # set nu to something huge if lambda = 0
                 nu = 1.e20
