@@ -112,12 +112,13 @@ def capabilities(request):
     this node and what can be queried at it.
 
     """
-    c = RequestContext(request, {'accessURL': get_base_URL(request),
-                                 'RESTRICTABLES': dictionaries.RESTRICTABLES,
-                                 'RETURNABLES': dictionaries.RETURNABLES,
-                                 'SOFTWARE_VERSION': settings.SOFTWARE_VERSION,
-                                # XXX omit EXAMPLE_QUERIES, for now
-                                })
+    c = RequestContext(request, {
+                    'accessURL': get_base_URL(request),
+                    'RESTRICTABLES': dictionaries.RESTRICTABLES,
+                    'RETURNABLES': dictionaries.RETURNABLES,
+                    'SOFTWARE_VERSION': settings.SOFTWARE_VERSION,
+                    'EXAMPLE_QUERIES': dictionaries.EXAMPLE_QUERIES,
+                    })
     return render_to_response('tap/capabilities.xml', c, mimetype='text/xml')
 
 def availability(request):
