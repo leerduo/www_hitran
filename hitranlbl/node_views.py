@@ -17,7 +17,7 @@ import dictionaries
 from search_xsams import get_src_ids, xsams_generator, get_transitions_count,\
                          get_isos_count
 from search_utils import get_all_source_ids
-from hitranmeta.models import Source
+from hitranmeta.models import SourceType, Source
 
 NODEID = settings.NODEID
 
@@ -31,6 +31,34 @@ def add_headers(headers, response):
     for header_name in headers:
         response['VAMDC-%s' % header_name] = headers[header_name]
     return response
+
+def get_self_source(request):
+    """
+    Create a Source object representing the "self-reference", given first in
+    the list of Sources in an XSAMS document - this provides information
+    about when the search was made, to which URL, and its POST data.
+
+    Argument:
+    request: the django Request object that triggered the query
+
+    Returns:
+    self_source: an instance of the Source model representing the self-
+    reference
+
+    """
+    
+    now = datetime.datetime.now()
+    year = now.year
+    time_now = now.isoformat() 
+    url = '%s%s' % (request.get_host(), request.get_full_path())
+    authors = 'Christian Hill'
+    source_type = SourceType.objects.filter(source_type='database').get()
+    title = 'Online implementation of the HITRAN database: data retrieved'\
+            ' at %s' % time_now
+    self_source = Source(id=0, authors=authors, year=year, url=url,
+                         source_type=source_type,
+                         title=title)
+    return self_source
 
 def sync(request):
     """
@@ -73,6 +101,12 @@ def sync(request):
     all_sources = Source.objects.filter(pk__in=all_source_ids)
     nsources = all_sources.count()
     log.debug('nsources = %d' % nsources)
+    # now prepend the "self-reference" Source to the front of
+    # all_sources, turning it into a list in the process:
+    all_sources = list(all_sources)
+    all_sources.insert(0, get_self_source(request))
+
+    # get the transitions count
     ntrans = get_transitions_count(sql_queries['tc_query'])
     log.debug('ntrans = %d' % ntrans)
     # if the query results have been truncated, calculate a percentage

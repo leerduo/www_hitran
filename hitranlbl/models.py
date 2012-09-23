@@ -62,6 +62,7 @@ class Trans(models.Model):
     class Meta:
         app_label = 'hitranlbl'
 
+# XXX retire this model
 class Prm(models.Model):
     trans = models.ForeignKey('Trans')
     name = models.CharField(max_length=20)
