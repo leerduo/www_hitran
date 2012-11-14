@@ -150,6 +150,11 @@ class LblSearchForm:
         if output_states:
             self.output_states = True
 
+        output_partition_function = post_data.get('output_partition_function')
+        self.output_partition_function = False
+        if output_partition_function:
+            self.output_partition_function = True
+
         self.error_msg = ''
         self.valid = True
         return

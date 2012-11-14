@@ -5,7 +5,8 @@ from django.conf import settings
 from django.db import connection
 from search_utils import get_basic_conditions, get_filestem, hitranIDs,\
                          get_iso_ids_list, get_prm_defaults, set_field,\
-                         write_sources, write_states, cfmt2ffmt
+                         write_sources, write_states, cfmt2ffmt,\
+                         get_pfn_filenames
 from hitranmeta.models import Iso, OutputField
 
 # a list of all the parameters with their own tables in the database
@@ -80,6 +81,10 @@ def do_search_atmos_min(form):
 
     # strip path from output filenames:
     output_files = [os.path.basename(x) for x in output_files]
+
+    if form.output_partition_function:
+        # get the partition function filenames
+        output_files.extend(get_pfn_filenames(form))
 
     end_time = time.time()
 

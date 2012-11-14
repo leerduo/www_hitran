@@ -14,7 +14,7 @@ from hitranlbl.models import State
 
 # map globally-unique isotopologue IDs to HITRAN molecID and isoID
 hitranIDs = [None,]    # NB there's no iso_id=0
-isos = Iso.objects.all()
+isos = Iso.objects.all().order_by('id')
 for iso in isos:
     hitranIDs.append((iso.molecule.id, iso.isoID))
 
@@ -598,3 +598,17 @@ def write_refs_bibtex(refs_bib_path, refIDs):
         print >>fo, unicode(source.bibtex()).encode('utf-8')
     fo.close()
 
+def get_pfn_filenames(form):
+    """
+    Get the filenames of the partition function files corresponding to the
+    isotopologues whose (global) IDs are listed in iso_ids_list.
+
+    """
+
+    pfn_filenames = []
+    for iso_id in form.selected_isoIDs:
+        try:
+            pfn_filenames.append('Q/%s.pfn' % isos.get(pk=iso_id).isoID_str)
+        except Iso.DoesNotExist:
+            pass
+    return pfn_filenames

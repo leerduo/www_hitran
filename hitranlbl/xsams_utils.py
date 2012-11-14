@@ -100,3 +100,22 @@ def make_datatype_tag(name, value, units, error=None, comment=None,
     tag_parts.append('</%s>' % name)
     return '\n'.join(tag_parts)
 
+def make_pretty_list(vals, ncols=5):
+    """
+    Output the list of strings, vals, in ncols columns, e.g.:
+    val[0]   val[1]   val[2]   val[3]   val[4]
+    val[5]   val[6]   val[7]   val[8]   val[9]
+    ...
+    val[n-1] val[n]
+
+    """
+
+    # XXX can this *really* be the best way of doing this?
+    s = []
+    for i, val in enumerate(vals):
+        s.append(val)
+        if (i+1) % ncols:
+            s.append(' ')
+        else:
+            s.append('\n')
+    return ''.join(s)

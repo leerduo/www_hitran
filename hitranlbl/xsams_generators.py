@@ -12,7 +12,8 @@ from xml.sax.saxutils import escape
 from hitranmeta.models import Iso, Source
 from hitranlbl.models import State
 from xsams_utils import make_xsams_id, make_mandatory_tag, make_optional_tag,\
-                        make_referenced_text_tag, make_datatype_tag
+                        make_referenced_text_tag, make_datatype_tag,\
+                        make_pretty_list
 from xsams_hitran_functions import xsams_functions
 from xsams_hitran_enivronments import xsams_environments
 from xsams_hitran_broadening import xsams_broadening_air,\
@@ -130,6 +131,11 @@ def xsams_molecular_chemical_species(iso):
     yield make_referenced_text_tag('ChemicalName', molecule.common_name)
     yield make_optional_tag('InChI', iso.InChI)
     yield make_optional_tag('InChIKey', iso.InChIKey)
+
+    # XXX hard-code partition function output for now:
+    for chunk in make_partition_function_tag(iso):
+        yield chunk
+
     yield make_optional_tag('MoleculeStructure',
                             get_molecule_cml_contents(iso.cml))
     yield '<StableMolecularProperties>'
@@ -147,6 +153,29 @@ def make_nuclear_spin_isomer_tag(nucspin_label, zpe_stateRef):
                '<Name>%s</Name></NuclearSpinIsomer>'\
                     % (zpe_stateRef, nucspin_isomer)
     return ''
+
+def make_partition_function_tag(iso):
+    """
+    Make and return the XML for this isotopologue's partition function, as a
+    PartitionFunction tag.
+
+    """
+
+    pfn_filename = '%s/Q/%s.q' % (settings.RESULTSPATH, iso.isoID_str)
+    fi = open(pfn_filename, 'r')
+    s_Q = [x.strip() for x in fi.readlines()]
+    fi.close()
+
+    yield '<PartitionFunction>'
+    yield '<T units="K">'
+    # XXX hard-code the partition function temperature grid, for now
+    # go up to T = 500 K in 1 K intervals from 70 K - a total of 431 points
+    yield '<LinearSequence count="431" initial="70" increment="1"/>'
+    yield '</T>'
+    yield '<Q units="unitless">'
+    yield '<DataList>\n%s\n</DataList>' %  make_pretty_list(s_Q[:431])
+    yield '</Q>'
+    yield '</PartitionFunction>'
 
 def make_state_qns_xml(case_prefix, qns_xml):
     """
