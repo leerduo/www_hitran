@@ -132,6 +132,9 @@ def xsams_molecular_chemical_species(iso):
     yield make_optional_tag('InChIKey', iso.InChIKey)
     yield make_optional_tag('MoleculeStructure',
                             get_molecule_cml_contents(iso.cml))
+    yield '<StableMolecularProperties>'
+    yield make_datatype_tag('MolecularWeight',iso.mass, 'amu')
+    yield '</StableMolecularProperties>'
     yield '</MolecularChemicalSpecies>\n'
 
 nucspin_isomers = {'o': 'ortho', 'm': 'meta', 'p': 'para'}

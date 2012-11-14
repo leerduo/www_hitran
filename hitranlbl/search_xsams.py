@@ -29,8 +29,11 @@ def get_src_ids(src_query):
 
     """
 
-    log.debug('Sources query: ', src_query)
-    print src_query
+    # log the Sources query, but don't let the logger confuse %-style escaped
+    # characters in the URL with C-style formatters.
+    s_debug = 'Sources query: %s' % src_query
+    log.debug(s_debug)
+    #print src_query
     print 'Fetching sources...'
     st = time.time()
 

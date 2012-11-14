@@ -129,6 +129,12 @@ def sync(request):
     if truncated_percent:
         headers['TRUNCATED'] = truncated_percent
 
+    if nisos == 0:
+        # No data to return so pass on the headers with a 204
+        log.info('I got no isotopologues back from the query. Returning 204.')
+        response = HttpResponse('', status=204)
+        return add_headers(headers, response)
+
     # OK, then - fire up the generator and hand it to HttpResponse: 
     timestamp = datetime.datetime.now().isoformat()
     generator = xsams_generator(sql_queries, timestamp, all_sources)
