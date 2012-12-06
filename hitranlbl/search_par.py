@@ -43,7 +43,7 @@ def do_search_par(form):
     # now write the par_lines
     ts = time.time()
     filestem = get_filestem()
-    output_file_list = write_par(filestem, par_lines)
+    output_file_list = write_par(filestem, par_lines, form)
     te = time.time()
     print 'time to write transitions = %.1f secs' % (te - ts)
 
@@ -67,7 +67,7 @@ def do_search_par(form):
 
     return output_file_list, search_summary
 
-def write_par(filestem, par_lines):
+def write_par(filestem, par_lines, form):
     """
     Write the par_lines to the output file.
 
@@ -86,10 +86,31 @@ def write_par(filestem, par_lines):
 
     parpath = os.path.join(settings.RESULTSPATH, '%s-trans.txt' % filestem)
     fo = open(parpath, 'w')
-    # the rows from the SQL query come back as tuples with the single
-    # element par_line, so we need to index at [0] here
-    for par_line in par_lines:
-        print >>fo, par_line[0]
+    if not form.field_separator:
+        # no separator, output the fields as they are
+        # NB the rows from the SQL query come back as tuples with the single
+        # element par_line, so we need to index at [0] here
+        for par_line in par_lines:
+            print >>fo, par_line[0]
+    else:
+        # separate the fields with the field separator character(s)
+        # the HITRAN2004+ field lengths:
+        flens = [2,1,12,10,10,5,5,10,4,8,15,15,15,15,6,12,1,7,7]
+        fmt = form.field_separator.join(['%s'] * len(flens))
+        # get the indices of the field boundaries: 0, 2, 3, 15, ..., 160
+        find = [0]
+        for flen in flens:
+            find.append(find[-1] + flen)
+        # get the pairs of values from find to index the par string
+        ipairs = zip(find, find[1::])
+
+        for par_line in par_lines:
+            fields = []
+            #for i,j in ipairs:
+            #    fields.append(par_line[0][i:j])
+            #print >>fo, fmt % tuple(fields)
+            print >>fo, fmt % tuple([par_line[0][i:j] for i,j in ipairs])
+
     fo.close()
     return [parpath,]
 

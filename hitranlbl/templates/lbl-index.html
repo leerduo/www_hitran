@@ -192,11 +192,9 @@ function change_output_collection()
        only if the collection selected is NOT a native HITRAN format */
     if (collectionID == HITRAN_collectionID) {
         default_entries.style.visibility = 'hidden';
-        field_separator.style.visibility = 'hidden';
         output_states.style.visibility = 'hidden';
     } else {
         default_entries.style.visibility = 'visible';
-        field_separator.style.visibility = 'visible';
         output_states.style.visibility = 'visible';
     }
 }
