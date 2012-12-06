@@ -37,5 +37,5 @@ def index(request):
     c['present_molecules'] = present_molecules
     c['molec_isos'] = molec_isos
     c['output_collections'] = output_collections
-    return render_to_response('index.html', c)
+    return render_to_response('lbl-index.html', c)
 
