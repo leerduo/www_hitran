@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from django.db import models
 import datetime
 from hitranmeta.models import Molecule
@@ -45,8 +46,17 @@ class Xsc(models.Model):
             xsc.T = float(line[47:54])
             xsc.p = float(line[54:60])
             xsc.sigmax = float(line[60:70])
-            xsc.res = float(line[70:75])
-            xsc.res_units = 'cm-1'      # XXX IR cross sections only, for now
+            try:
+                s_res = line[70:75].strip()
+                xsc.res = float(s_res)
+                xsc.res_units = 'cm-1'
+            except ValueError:
+                if s_res[-2:] == u'mÅ':
+                    xsc.res = float(s_res[:-2])
+                    xsc.res_units = u'mÅ'
+                else:
+                    raise ValueError('unidentified resolution units')
+                
             common_name = line[75:90]
             # characters 90-94 are 'not currently used'
             xsc.broadener = line[94:97]

@@ -14,9 +14,11 @@ import xn_utils
 
 HOME = os.getenv('HOME')
 hitran_path = os.path.join(HOME, 'research/VAMDC/HITRAN/django/HITRAN')
-xsc_path = os.path.join(HOME, 'research/HITRAN/HITRAN2008/IR-XSect/'\
-                              'Uncompressed-files')
-sys.path.append(xsc_path)
+ir_xsc_path = os.path.join(HOME, 'research/HITRAN/HITRAN2008/IR-XSect/'\
+                                 'Uncompressed-files')
+uv_xsc_path = os.path.join(HOME, 'research/HITRAN/HITRAN2008/UV/'\
+                                 'Cross-sections')
+#sys.path.append(xsc_path)
 sys.path.append(hitran_path)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 from hitranmeta.models import MoleculeName
@@ -24,13 +26,36 @@ from models import Xsc
 
 xscresults_path = os.path.join(hitran_path, 'results/xsc')
 
+# alternative names used in the cross sections file headers for some molecules,
+# but which we don't actually want to put in the molecule_names database:
+alt_names = {
+'chlorinedioxide': 'Chlorine dioxide',
+'nitrogentrioxid': 'Nitrate radical',
+'oxylene': 'o-xylene',
+'mxylene': 'm-xylene',
+'pxylene': 'p-xylene',
+'C7H8': 'toluene',
+}
+
 try:
     molec_name = sys.argv[1]
+    iruv = sys.argv[2].upper()
+    if iruv == 'UV':
+        ir = False
+    elif iruv == 'IR':
+        ir = True
+    else:
+        raise
 except:
     print 'usage is:'
-    print '%s <molec_name>' % sys.argv[0]
+    print '%s <molec_name> <IR|UV>' % sys.argv[0]
     sys.exit(1)
 
+# the name of the molecule in the native HITRAN filenames
+molec_filename = molec_name
+# the name of the molecule in my moleculename database
+if molec_name in alt_names:
+    molec_name = alt_names[molec_name]
 try:
     molec_id = MoleculeName.objects.filter(name=molec_name).get().molecule_id
 except MoleculeName.DoesNotExist:
@@ -42,7 +67,17 @@ print molec_name,'has ID', molec_id
 filenames = []
 # cross section filenames must be '<molec_name>_???.xsc' where ??? can be
 # anything.
-filenames.extend(glob.glob(os.path.join(xsc_path,'%s_*.xsc' % molec_name)))
+if ir:
+    glob_paths = [os.path.join(ir_xsc_path,'%s_*.xsc' % molec_filename),]
+else:
+    # some UV cross section files use the '-' separator instead of '_'
+    glob_paths = [os.path.join(uv_xsc_path,'%s_*.xsc' % molec_filename),
+                  os.path.join(uv_xsc_path,'%s-*.xsc' % molec_filename)]
+for glob_path in glob_paths:
+    filenames.extend(glob.glob(glob_path))
+if len(filenames)==0:
+    print 'no files matching pattern:\n%s' % '\n'.join(glob_paths)
+    sys.exit(1)
 for filename in filenames:
     print filename
     mod_date = datetime.date.fromtimestamp(os.path.getmtime(
@@ -97,7 +132,6 @@ for filename in filenames:
 
         sigma_name = os.path.join(xscresults_path, '%s.sigma' % filestem)
         xn_utils.write_list(sigma_name, s_sigma)
-
         xsc.save()
     fi.close()
 
