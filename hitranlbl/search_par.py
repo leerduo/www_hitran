@@ -105,10 +105,6 @@ def write_par(filestem, par_lines, form):
         ipairs = zip(find, find[1::])
 
         for par_line in par_lines:
-            fields = []
-            #for i,j in ipairs:
-            #    fields.append(par_line[0][i:j])
-            #print >>fo, fmt % tuple(fields)
             print >>fo, fmt % tuple([par_line[0][i:j] for i,j in ipairs])
 
     fo.close()

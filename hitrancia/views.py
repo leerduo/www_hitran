@@ -2,7 +2,7 @@
 from django.core.context_processors import csrf
 from django.shortcuts import render_to_response
 from django.db.models import Q
-from hitranmeta.models import Molecule, Ref
+from hitranmeta.models import Molecule
 from hitrancia.models import CIA, CollisionPair
 from cia_searchform import CIASearchForm
 import settings
@@ -115,7 +115,7 @@ def atom_xml(atoms):
     for atom in atoms:
         yield '    <Atom>\n    <ChemicalElement>'
         # the molecID for atoms is 1000 + nuclearcharge (1001 = H, 1018 = Ar, etc)
-        yield '            <NuclearCharge>%d</NuclearCharge>' % (atom.molecID-1000)
+        yield '            <NuclearCharge>%d</NuclearCharge>' % (atom.id-1000)
         yield '            <ElementSymbol>%s</ElementSymbol>'\
                         % (atom.ordinary_formula)
         yield '        </ChemicalElement>'
@@ -198,9 +198,9 @@ def make_xsams(cias, species, sources, output_files):
     yield '<Species>'
     atoms = []; molecules = []
     for a_species in species:
-        if a_species.molecID > 1000 and a_species < 1100:
+        if a_species.id > 1000 and a_species.id < 1100:
             # these 'molecules' are really atoms:
-            Z = a_species.molecID - 1000    # nuclear charge
+            Z = a_species.id - 1000    # nuclear charge
             # XXX for now, hard code the mass numbers for H, He and Ar:
             if Z == 1: a_species.mass_number = 1
             if Z == 2: a_species.mass_number = 4

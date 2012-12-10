@@ -144,12 +144,13 @@ class XscSearchForm:
         self.molecule_ids = list(selected_molecIDs)
         self.molecules = Molecule.objects.filter(
                                     pk__in=selected_molecIDs)
-        self.output_formats = post_data.getlist('output_format')
-        if not self.output_formats:
-            # no output formats selected!
-            self.error_msg = '<p class="error_msg">No output format'\
-                             ' specified</p>'
-            return
+        #self.output_formats = post_data.getlist('output_format')
+        #if not self.output_formats:
+        #    # no output formats selected!
+        #    self.error_msg = '<p class="error_msg">No output format'\
+        #                     ' specified</p>'
+        #    return
+        self.output_formats = ['xsc',]
 
         self.error_msg = ''
         self.valid = True

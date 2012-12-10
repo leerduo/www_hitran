@@ -2,7 +2,7 @@
 from django.core.context_processors import csrf
 from django.shortcuts import render_to_response
 from django.db.models import Q
-from hitranmeta.models import Molecule, Ref
+from hitranmeta.models import Molecule
 from hitranxsc.models import Xsc
 from xsc_searchform import XscSearchForm
 import settings
@@ -13,7 +13,7 @@ import tarfile
 
 # get a list of molecule objects with entries in the hitranxsc_xsc table
 p_ids = Xsc.objects.values('molecule').distinct()
-xsc_molecules = Molecule.objects.filter(molecID__in=p_ids)
+xsc_molecules = Molecule.objects.filter(pk__in=p_ids)
 
 def index(request):
     if request.POST:

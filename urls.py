@@ -8,9 +8,12 @@ admin.autodiscover()
 urlpatterns = patterns('',
     # Examples:
     # url(r'^$', 'HITRAN.views.home', name='home'),
-    url(r'^HITRAN/lbl/$', 'HITRAN.hitranlbl.views.index'),
-    #url(r'^HITRAN/cia/$', 'HITRAN.hitrancia.views.index'),
-    #url(r'^HITRAN/xsc/$', 'HITRAN.hitranxsc.views.index'),
+    url(r'^$', 'hitranmeta.views.index'),
+    url(r'^news/$', 'hitranmeta.views.news'),
+    url(r'^lbl/$', 'HITRAN.hitranlbl.views.index'),
+    url(r'^cia/$', 'HITRAN.hitrancia.views.index'),
+    url(r'^xsc/$', 'HITRAN.hitranxsc.views.index'),
+    url(r'^additional/$', 'hitranmeta.views.additional'),
 
     (r'^tap/sync[/]?$', 'HITRAN.hitranlbl.node_views.sync'),
     (r'^tap/availability[/]?$', 'HITRAN.hitranlbl.node_views.availability'),
@@ -25,42 +28,42 @@ urlpatterns = patterns('',
 
 if settings.DEBUG:
     urlpatterns += patterns('',
-        url(r'^HITRAN/lbl/results/(?P<path>.*)$',
+        url(r'^lbl/results/(?P<path>.*)$',
         'django.views.static.serve', {'document_root': settings.RESULTSPATH,
         }),
     )
     urlpatterns += patterns('',
-        url(r'^HITRAN/cia/results/(?P<path>.*.tgz)$',
+        url(r'^cia/results/(?P<path>.*.tgz)$',
         'django.views.static.serve', {'document_root':
                                         settings.RESULTSPATH,
         }),
     )
     urlpatterns += patterns('',
-        url(r'^HITRAN/cia/results/(?P<path>.*.xsams)$',
+        url(r'^cia/results/(?P<path>.*.xsams)$',
         'django.views.static.serve', {'document_root':
                                         settings.RESULTSPATH,
         }),
     )
     urlpatterns += patterns('',
-        url(r'^HITRAN/cia/results/(?P<path>.*)$',
+        url(r'^cia/results/(?P<path>.*)$',
         'django.views.static.serve', {'document_root':
                                         settings.RESULTSPATH + '/cia',
         }),
     )
     urlpatterns += patterns('',
-        url(r'^HITRAN/xsc/results/(?P<path>.*.tgz)$',
+        url(r'^xsc/results/(?P<path>.*.tgz)$',
         'django.views.static.serve', {'document_root':
                                         settings.RESULTSPATH,
         }),
     )
     urlpatterns += patterns('',
-        url(r'^HITRAN/xsc/results/(?P<path>.*.xsams)$',
+        url(r'^xsc/results/(?P<path>.*.xsams)$',
         'django.views.static.serve', {'document_root':
                                         settings.RESULTSPATH,
         }),
     )
     urlpatterns += patterns('',
-        url(r'^HITRAN/xsc/results/(?P<path>.*)$',
+        url(r'^xsc/results/(?P<path>.*)$',
         'django.views.static.serve', {'document_root':
                                         settings.RESULTSPATH + '/xsc',
         }),

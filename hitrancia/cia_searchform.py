@@ -94,12 +94,13 @@ class CIASearchForm:
         self.collision_pair_ids = list(selected_pairIDs)
         self.collision_pairs = CollisionPair.objects.filter(
                                     pk__in=selected_pairIDs)
-        self.output_formats = post_data.getlist('output_format')
-        if not self.output_formats:
-            # no output formats selected!
-            self.error_msg = '<p class="error_msg">No output format'\
-                             ' specified</p>'
-            return
+        #self.output_formats = post_data.getlist('output_format')
+        #if not self.output_formats:
+        #    # no output formats selected!
+        #    self.error_msg = '<p class="error_msg">No output format'\
+        #                     ' specified</p>'
+        #    return
+        self.output_formats = ['cia',]
 
         self.error_msg = ''
         self.valid = True

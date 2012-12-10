@@ -1,7 +1,11 @@
 from django.contrib import admin
 from HITRAN.hitranmeta.models import OutputField, OutputCollection,\
                                      Source, NucSpins, OutputFieldOrder,\
-                                     Iso, RefsMap, PrmDesc
+                                     Iso, Molecule, RefsMap, PrmDesc
+
+class MoleculeAdmin(admin.ModelAdmin):
+    pass
+admin.site.register(Molecule, MoleculeAdmin)
 
 class IsoAdmin(admin.ModelAdmin):
     pass
