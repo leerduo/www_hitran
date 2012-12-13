@@ -12,7 +12,7 @@ urlpatterns = patterns('',
     url(r'^news/$', 'hitranmeta.views.news'),
     url(r'^lbl/$', 'HITRAN.hitranlbl.views.index'),
     url(r'^cia/$', 'HITRAN.hitrancia.views.index'),
-    url(r'^xsc/$', 'HITRAN.hitranxsc.views.index'),
+    url(r'^xsc/(?P<iruv>.*)$', 'HITRAN.hitranxsc.views.index'),
     url(r'^additional/$', 'hitranmeta.views.additional'),
 
     (r'^tap/sync[/]?$', 'HITRAN.hitranlbl.node_views.sync'),

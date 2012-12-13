@@ -18,6 +18,9 @@ ir_xsc_path = os.path.join(HOME, 'research/HITRAN/HITRAN2008/IR-XSect/'\
                                  'Uncompressed-files')
 uv_xsc_path = os.path.join(HOME, 'research/HITRAN/HITRAN2008/UV/'\
                                  'Cross-sections')
+updates_path = os.path.join(HOME, 'research/HITRAN/HITRAN2008/updates')
+                                
+
 #sys.path.append(xsc_path)
 sys.path.append(hitran_path)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
@@ -66,13 +69,18 @@ print molec_name,'has ID', molec_id
 
 filenames = []
 # cross section filenames must be '<molec_name>_???.xsc' where ??? can be
-# anything.
-if ir:
-    glob_paths = [os.path.join(ir_xsc_path,'%s_*.xsc' % molec_filename),]
-else:
+# anything. This lot are for the original HITRAN2008 upload:
+#if ir:
+#    glob_paths = [os.path.join(ir_xsc_path,'%s_*.xsc' % molec_filename),]
+#else:
     # some UV cross section files use the '-' separator instead of '_'
-    glob_paths = [os.path.join(uv_xsc_path,'%s_*.xsc' % molec_filename),
-                  os.path.join(uv_xsc_path,'%s-*.xsc' % molec_filename)]
+#    glob_paths = [os.path.join(uv_xsc_path,'%s_*.xsc' % molec_filename),
+#                  os.path.join(uv_xsc_path,'%s-*.xsc' % molec_filename)]
+
+# and this lot are for the update:
+glob_paths = [os.path.join(updates_path, '%s_*.xsc' % molec_filename),
+             ]
+
 for glob_path in glob_paths:
     filenames.extend(glob.glob(glob_path))
 if len(filenames)==0:
