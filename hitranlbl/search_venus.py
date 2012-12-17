@@ -73,7 +73,7 @@ def do_search_venus(form):
 
     ts = time.time()
     filestem = get_filestem()
-    output_files = write_venus(filestem, rows, form)
+    output_files = write_venus(filestem, iso_ids_list, rows, form)
     te = time.time()
     print 'time to write transitions = %.1f secs' % (te - ts)
 
@@ -94,7 +94,7 @@ def do_search_venus(form):
 
     return output_files, search_summary
 
-def write_venus(filestem, rows, form):
+def write_venus(filestem, iso_ids_list, rows, form):
     """
     Write the output transitions file for the "venus" output
     collection.
@@ -163,7 +163,7 @@ def write_venus(filestem, rows, form):
 
     # write the states
     if form.output_states:
-        output_file_list.extend(write_states(form, filestem, state_ids))
+        output_file_list.extend(write_states(form, filestem, iso_ids_list))
     # write the sources
     output_file_list.extend(write_sources(form, filestem, source_ids))
 
