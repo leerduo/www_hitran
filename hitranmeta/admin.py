@@ -15,11 +15,6 @@ class PrmDescAdmin(admin.ModelAdmin):
     pass
 admin.site.register(PrmDesc, PrmDescAdmin)
 
-#class RefAdmin(admin.ModelAdmin):
-#    ordering = ['id','refID']
-#    search_fields = ['authors', 'title']
-#admin.site.register(Ref, RefAdmin)
-
 class RefsMapAdmin(admin.ModelAdmin):
     ordering = ['id','refID']
 admin.site.register(RefsMap, RefsMapAdmin)

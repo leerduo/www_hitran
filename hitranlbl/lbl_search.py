@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from search_par import do_search_par
-from search_min import do_search_min
-from search_atmos_min import do_search_atmos_min
+from search_astrophysics import do_search_astrophysics
+from search_atmospheric import do_search_atmospheric
+from search_atmospheric_min import do_search_atmospheric_min
 #from search_comprehensive import do_search_comprehensive
 from search_venus import do_search_venus
 from search_xsams import do_search_xsams
@@ -22,8 +23,9 @@ def do_search(form, output_collections):
 # top of this file!
 search_routines = {
         'HITRAN2004+': do_search_par,
-        'min': do_search_min,
-        'atmos-min': do_search_atmos_min,
+        'astrophysics': do_search_astrophysics,
+        'atmospheric': do_search_atmospheric,
+        'atmospheric-min': do_search_atmospheric_min,
         #'comprehensive': do_search_comprehensive,
         'venus': do_search_venus,
         'XSAMS': do_search_xsams,
