@@ -162,7 +162,10 @@ def make_partition_function_tag(iso):
     """
 
     pfn_filename = '%s/Q/%s.q' % (settings.RESULTSPATH, iso.isoID_str)
-    fi = open(pfn_filename, 'r')
+    try:
+        fi = open(pfn_filename, 'r')
+    except IOError:
+        return
     s_Q = [x.strip() for x in fi.readlines()]
     fi.close()
 
