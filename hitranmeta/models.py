@@ -231,8 +231,6 @@ class Source(models.Model):
     note_latex = models.TextField(null=True, blank=True)
     # the Digital Object Identifier, if available
     doi = models.CharField(max_length=100, null=True, blank=True)
-    # a string of HTML to be output on websites citing this reference
-    cited_as_html = models.TextField()
     # a URL to the source, if available
     url = models.TextField(null=True, blank=True)
     # method: e.g. 'experimental', 'theory', 'extrapolation', 'guess'
