@@ -13,12 +13,14 @@ import datetime
 import tarfile
 
 # get a list of molecule objects with entries in the hitranxsc_xsc table
+all_ids = Xsc.objects.values('molecule').distinct()
 ir_ids = Xsc.objects.filter(numin__lte=20000.).values('molecule').distinct()
 uv_ids = Xsc.objects.filter(numin__gte=20000.).values('molecule').distinct()
+all_xsc_molecules = Molecule.objects.filter(pk__in=all_ids)
 ir_xsc_molecules = Molecule.objects.filter(pk__in=ir_ids)
 uv_xsc_molecules = Molecule.objects.filter(pk__in=uv_ids)
 
-def index(request, iruv):
+def index(request, iruv=None):
     if request.POST:
         form = XscSearchForm(request.POST)
         form_valid, msg = form.is_valid()
@@ -39,6 +41,8 @@ def index(request, iruv):
         c['xsc_molecules'] = ir_xsc_molecules
     elif iruv == 'uv':
         c['xsc_molecules'] = uv_xsc_molecules
+    elif iruv is None:
+        c['xsc_molecules'] = all_xsc_molecules
     else:
         raise Http404
     return render_to_response('xsc-index.html', c)
