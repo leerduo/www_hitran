@@ -87,6 +87,10 @@ for requestable in requestables_list:
     REQUESTABLES[requestable] = 'dummy'
 
 EXAMPLE_QUERIES = {
-"REQUEST=doQuery&LANG=VSS2&amp;FORMAT=XSAMS&QUERY=select * where (RadTransWavelength >= 10000.0 AND RadTransWavelength <= 100000.0) AND ((InchiKey IN ('DXHPZXWIPWDXHJ-VQEHIDDOSA-N','DXHPZXWIPWDXHJ-HQMMCQRPSA-N','DXHPZXWIPWDXHJ-UHFFFAOYSA-N')))": '(12C)(32S), (12C)(34S), (12C)(33S) lines between 10000 and 100000 Angstromgs',
-"REQUEST=doQuery&LANG=VSS2&FORMAT=XSAMS&QUERY=SELECT ALL WHERE RadTransWavenumber>6000. AND RadTransWavenumber<6100. AND (MoleculeChemicalName in ('H2O', 'Ammonia') OR MoleculeStoichiometricFormula='HOCl')": 'H2O, NH3 and HOCl lines between 6000 and 6100 cm-1',
+"SELECT * WHERE (RadTransWavelength >= 10000.0 AND RadTransWavelength <= 100000.0) AND ((InchiKey IN ('DXHPZXWIPWDXHJ-VQEHIDDOSA-N','DXHPZXWIPWDXHJ-HQMMCQRPSA-N','DXHPZXWIPWDXHJ-UHFFFAOYSA-N')))": '(12C)(32S), (12C)(34S), (12C)(33S) lines between 10000 and 100000 Angstroms',
+
+"SELECT ALL WHERE RadTransWavenumber>6000. AND RadTransWavenumber<6100. AND (MoleculeChemicalName in ('H2O', 'Ammonia') OR MoleculeStoichiometricFormula='HOCl')": 'H2O, NH3 and HOCl lines between 6000 and 6100 cm-1',
 }
+
+# the full URL to use these queries is:
+# "vamdc.mssl.ucl.ac.uk/node/hitran/tap/sync/?REQUEST=doQuery&LANG=VSS2&FORMAT=XSAMS&QUERY=<query>"

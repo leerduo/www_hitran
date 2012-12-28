@@ -4,7 +4,7 @@
 # in XSAMS format.
 from django.conf import settings
 
-prm_names = ['nu', 'Sw', 'A', 'gamma_air', 'gamma_self', 'n_air', 'delta_air']
+prm_names = ['nu', 'sw', 'a', 'gamma_air', 'gamma_self', 'n_air', 'delta_air']
 
 def get_limit_query():
     """

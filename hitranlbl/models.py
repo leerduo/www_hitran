@@ -62,15 +62,11 @@ class Trans(models.Model):
     class Meta:
         app_label = 'hitranlbl'
 
-# XXX retire this model
-class Prm(models.Model):
-    trans = models.ForeignKey('Trans')
-    name = models.CharField(max_length=20)
-    val = models.FloatField()
-    err = models.FloatField(blank=True, null=True)
-    ierr = models.IntegerField(blank=True, null=True)
-    source = models.ForeignKey('hitranmeta.source', blank=True, null=True)
-    method = models.IntegerField(blank=True, null=True)
-    
-    class Meta:
-        app_label = 'hitranlbl'
+# Generic parameter model
+class Prm(object):
+    def __init__(self, trans_id, val, err, ierr, source_id):
+        self.trans_id = trans_id
+        self.val = val
+        self.err = err
+        self.ierr = ierr
+        self.source_id = source_id
