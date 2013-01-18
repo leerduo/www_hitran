@@ -34,8 +34,9 @@ h1 {
     font-family: Courier;
     background: #fcf;
 	border: black 1px solid;
-    max-height: 400px;
-    overflow: scroll;
+    max-height: 300px;
+    overflow-y: scroll;
+    overflow-x: hidden;
 }
 
 #output_fields table {

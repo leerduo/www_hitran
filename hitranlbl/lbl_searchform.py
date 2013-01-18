@@ -73,8 +73,12 @@ class LblSearchForm:
 
             self.output_collection_index = int(
                     post_data.get('output_collection'))
-            self.valid_on = datetime.strptime(post_data.get('valid_on'),
-                    '%Y-%m-%d').date()
+            valid_on_date = post_data.get('valid_on')
+            if valid_on_date:
+                self.valid_on = datetime.strptime(valid_on_date,
+                        '%Y-%m-%d').date()
+            else:
+                self.valid_on = datetime.today()
         except ValueError:
             self.error_msg = '<p class="error_msg">Invalid search terms</p>'
             return

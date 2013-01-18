@@ -3,7 +3,7 @@ import os
 import time
 from django.conf import settings
 from search_utils import make_simple_sql_query, get_filestem, get_refIDs,\
-                         write_refs
+                         write_refs, get_pfn_filenames
 
 def do_search_par(form):
     """
@@ -64,6 +64,10 @@ def do_search_par(form):
 
     # strip path from output filenames:
     output_file_list = [os.path.basename(x) for x in output_file_list]
+
+    if form.output_partition_function:
+        # get the partition function filenames
+        output_file_list.extend(get_pfn_filenames(form))
 
     return output_file_list, search_summary
 

@@ -6,6 +6,7 @@ from search_atmospheric import do_search_atmospheric
 from search_atmospheric_min import do_search_atmospheric_min
 #from search_comprehensive import do_search_comprehensive
 from search_venus import do_search_venus
+from search_CO_test import do_search_CO_test
 from search_xsams import do_search_xsams
 
 def do_search(form, output_collections):
@@ -29,4 +30,5 @@ search_routines = {
         #'comprehensive': do_search_comprehensive,
         'venus': do_search_venus,
         'XSAMS': do_search_xsams,
+        'CO-test': do_search_CO_test,
 }

@@ -135,7 +135,8 @@ class OutputField(models.Model):
     # Python casting method, 'int', 'float', 'str', etc.
     prm_type = models.CharField(max_length=20)
     # evaluation string for output after query
-    eval_str = models.CharField(max_length=50)
+    # XXX I don't think we use this any more:
+    #eval_str = models.CharField(max_length=50)
 
     def __unicode__(self):
         return self.name

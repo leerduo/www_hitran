@@ -9,7 +9,7 @@ import time
 import datetime
 from django.conf import settings
 from django.db import connection
-from hitranmeta.models import Molecule, Iso, Source, RefsMap
+from hitranmeta.models import Molecule, Iso, Source, RefsMap, PartitionFunction
 from hitranlbl.models import State
 
 # map globally-unique isotopologue IDs to HITRAN molecID and isoID
@@ -605,10 +605,8 @@ def get_pfn_filenames(form):
 
     """
 
-    pfn_filenames = []
-    for iso_id in form.selected_isoIDs:
-        try:
-            pfn_filenames.append('Q/%s.pfn' % isos.get(pk=iso_id).isoID_str)
-        except Iso.DoesNotExist:
-            pass
-    return pfn_filenames
+    selected_isos = Iso.objects.filter(pk__in=form.selected_isoIDs)
+    pfn_filenames = PartitionFunction.objects.filter(iso__in=selected_isos)\
+                .values_list('filename', flat=True)
+    print pfn_filenames
+    return ['Q/%s' % pfn_filename for pfn_filename in pfn_filenames]

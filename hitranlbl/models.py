@@ -58,11 +58,12 @@ class Trans(models.Model):
     valid_to = models.DateField(default=datetime.date(
             year=3000, month=1, day=1))
     par_line = models.CharField(max_length=160, blank=True, null=True)
+    band = models.CharField(max_length=40, blank=True, null=True)
     
     class Meta:
         app_label = 'hitranlbl'
 
-# Generic parameter model
+# Generic parameter model, not tied to any particular Parameter table
 class Prm(object):
     def __init__(self, trans_id, val, err, ierr, source_id):
         self.trans_id = trans_id
